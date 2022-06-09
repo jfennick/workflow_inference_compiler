@@ -258,7 +258,7 @@ def extract_backend(yaml_tree: Yaml, wic: Yaml, yaml_path: Path) -> Tuple[str, Y
     return (backend, yaml_tree_copy)
 
 
-def inline_sub_steps(yaml_path: Path, tools: Tools, yml_paths: Dict[str, Path]) -> List[Yaml]:
+def inline_sub_steps(yaml_path: Path, tools: Tools, yml_paths: Dict[str, Dict[str, Path]]) -> List[Yaml]:
     """Recursively inlines the contents of ALL of the yml sub-workflows. (deprecated)
 
     This function is deprecated and will soon be replaced with a better implementation.
@@ -266,7 +266,7 @@ def inline_sub_steps(yaml_path: Path, tools: Tools, yml_paths: Dict[str, Path]) 
     Args:
         yaml_path (Path): The filepath of the yml workflow.
         tools (Tools): The CWL CommandLineTool definitions found using get_tools_cwl()
-        yml_paths (Dict[str, Path]): The yml workflow definitions found using get_yml_paths()
+        yml_paths (Dict[str, Dict[str, Path]]): The yml workflow definitions found using get_yml_paths()
 
     Returns:
         List[Yaml]: The recursively inlined contents of the given yml workflow.
@@ -278,6 +278,7 @@ def inline_sub_steps(yaml_path: Path, tools: Tools, yml_paths: Dict[str, Path]) 
     wic = yaml_tree.get('wic', {})
     (back_name_, yaml_tree) = extract_backend(yaml_tree, wic, yaml_path)
     steps = yaml_tree['steps']
+    wic_steps = wic['wic'].get('steps', {})
 
     # Get the dictionary key (i.e. the name) of each step.
     steps_keys = []
@@ -289,7 +290,13 @@ def inline_sub_steps(yaml_path: Path, tools: Tools, yml_paths: Dict[str, Path]) 
     steps_all = []
     for i, step_key in enumerate(steps_keys):
         if step_key in subkeys:
-            path = yml_paths[Path(step_key).stem]
+            # NOTE: See comments in read_ast_from_disk()
+            sub_wic = wic_steps.get(f'({i+1}, {step_key})', {})
+            sub_wic_wic = sub_wic.get('wic', {})
+            namespace = sub_wic_wic.get('namespace', 'global')
+
+            # TODO: Use .get() and add error checking
+            path = yml_paths[namespace][Path(step_key).stem]
             steps_i = inline_sub_steps(path, tools, yml_paths)
         else:
             steps_i = [steps[i]]

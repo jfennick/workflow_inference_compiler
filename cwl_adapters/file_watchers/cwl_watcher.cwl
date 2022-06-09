@@ -20,7 +20,7 @@ inputs:
     - edam:format_2330 # 'Textual format'
     inputBinding:
       position: 1
-      prefix: --dir_path
+      prefix: --cachedir_path
 
   file_pattern:
     label: Filenames that match this pattern will be watched / polled for changes. i.e. '*.log'
@@ -65,6 +65,28 @@ inputs:
     inputBinding:
       position: 5
       prefix: --config
+
+  cwl_dir:
+    label: Directory which contains the CWL CommandLineTools
+    doc: |
+      Directory which contains the CWL CommandLineTools
+    type: string
+    format:
+    - edam:format_2330 # 'Textual format'
+    inputBinding:
+      position: 6
+      prefix: --cwl_dir
+
+  yml_dirs_file:
+    label: Configuration file which lists the directories which contains the YAML Workflows
+    doc: |
+      Configuration file which lists the directories which contains the YAML Workflows
+    type: string
+    format:
+    - edam:format_2330 # 'Textual format'
+    inputBinding:
+      position: 7
+      prefix: --yml_dirs_file
 
 outputs:
   output_log_path:

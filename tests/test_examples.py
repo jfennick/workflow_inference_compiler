@@ -29,13 +29,17 @@ def test_examples() -> None:
         args = wic.cli.parser.parse_args()
 
     tools_cwl = wic.main.get_tools_cwl(Path('.'))
-    yml_paths = wic.main.get_yml_paths(Path('examples/'))
+    yml_paths = wic.main.get_yml_paths(args.yml_dirs_file)
 
     # Generate schemas for validation
-    validator = wic_schema.get_validator(tools_cwl, list(yml_paths))
+    yaml_stems = wic.utils.flatten([list(p) for p in yml_paths.values()])
+    validator = wic_schema.get_validator(tools_cwl, yaml_stems)
 
     # First compile all of the workflows.
-    for yml_path_str, yml_path in yml_paths.items():
+    tuples = [(yml_path_str, yml_path)
+            for yml_namespace, yml_paths_dict in yml_paths.items()
+            for yml_path_str, yml_path in yml_paths_dict.items()]
+    for yml_path_str, yml_path in tuples:
         # Load the high-level yaml workflow file.
         with open(yml_path, mode='r', encoding='utf-8') as y:
             root_yaml_tree: Yaml = yaml.safe_load(y.read())
@@ -95,13 +99,17 @@ def test_cwl_embedding_independence() -> None:
         args = wic.cli.parser.parse_args()
 
     tools_cwl = wic.main.get_tools_cwl(Path('.'))
-    yml_paths = wic.main.get_yml_paths(Path('examples'))
+    yml_paths = wic.main.get_yml_paths(args.yml_dirs_file)
 
     # Generate schemas for validation
-    validator = wic_schema.get_validator(tools_cwl, list(yml_paths))
+    yaml_stems = wic.utils.flatten([list(p) for p in yml_paths.values()])
+    validator = wic_schema.get_validator(tools_cwl, yaml_stems)
 
     # First compile all of the workflows once.
-    for yml_path_str, yml_path in yml_paths.items():
+    tuples = [(yml_path_str, yml_path)
+            for yml_namespace, yml_paths_dict in yml_paths.items()
+            for yml_path_str, yml_path in yml_paths_dict.items()]
+    for yml_path_str, yml_path in tuples:
         # Load the high-level yaml workflow file.
         with open(yml_path, mode='r', encoding='utf-8') as y:
             root_yaml_tree: Yaml = yaml.safe_load(y.read())
@@ -206,12 +214,16 @@ def test_inline_subworkflows() -> None:
         args = wic.cli.parser.parse_args()
 
     tools_cwl = wic.main.get_tools_cwl(Path('.'))
-    yml_paths = wic.main.get_yml_paths(Path('examples/'))
+    yml_paths = wic.main.get_yml_paths(args.yml_dirs_file)
 
     # Generate schemas for validation
-    validator = wic_schema.get_validator(tools_cwl, list(yml_paths))
+    yaml_stems = wic.utils.flatten([list(p) for p in yml_paths.values()])
+    validator = wic_schema.get_validator(tools_cwl, yaml_stems)
 
-    for yml_path_str, yml_path in yml_paths.items():
+    tuples = [(yml_path_str, yml_path)
+            for yml_namespace, yml_paths_dict in yml_paths.items()
+            for yml_path_str, yml_path in yml_paths_dict.items()]
+    for yml_path_str, yml_path in tuples:
         # Load the high-level yaml workflow file.
         with open(yml_path, mode='r', encoding='utf-8') as y:
             root_yaml_tree: Yaml = yaml.safe_load(y.read())

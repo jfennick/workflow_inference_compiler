@@ -299,6 +299,15 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
             cachedir_path = Path(args.cachedir).absolute()
             #print('setting cachedir_path to', cachedir_path)
             steps[i][step_key]['in']['cachedir_path'] = str(cachedir_path)
+            steps[i][step_key]['in']['cwl_dir'] = str(Path(args.cwl_dir).absolute())
+            yml_dirs_file_abs = str(Path(args.yml_dirs_file + '_absolute').absolute())
+            steps[i][step_key]['in']['yml_dirs_file'] = yml_dirs_file_abs
+
+            # NOTE: We also need to make the paths within yml_dirs_file absolute.
+            ns_paths = utils.read_lines_pairs(Path(args.yml_dirs_file))
+            pairs_abs = [ns + ' ' + str(Path(path).absolute()) for ns, path in ns_paths]
+            with open(yml_dirs_file_abs, mode='w', encoding='utf-8') as f:
+                f.write('\n'.join(pairs_abs))
 
         args_provided = []
         if steps[i][step_key] and 'in' in steps[i][step_key]:
