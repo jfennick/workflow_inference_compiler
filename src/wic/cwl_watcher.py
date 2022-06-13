@@ -16,7 +16,7 @@ from jsonschema import Draft202012Validator
 from . import ast, cli, compiler, inference, utils
 from .main import get_tools_cwl, get_yml_paths
 from .schemas import wic_schema
-from .wic_types import GraphData, GraphReps, Json, Tools, YamlTree
+from .wic_types import GraphData, GraphReps, Json, StepId, Tools, YamlTree
 
 """from watchdog.observers import Observer
 from watchdog.observers.polling import PollingObserver
@@ -80,7 +80,9 @@ def rerun_cwltool(directory_realtime: Path, cachedir_path: Path, cwl_tool: str,
             root_yaml_tree = {'wic': wic_steps, 'steps': [{cwl_tool: None}]}
             #print('root_yaml_tree')
             #print(yaml.dump(root_yaml_tree))
-            y_t = YamlTree(yaml_path, root_yaml_tree)
+            plugin_ns = 'global' # wic['wic'].get('namespace', 'global')
+            step_id = StepId(yaml_path, plugin_ns)
+            y_t = YamlTree(step_id, root_yaml_tree)
             yaml_tree_raw = ast.read_ast_from_disk(y_t, yml_paths, tools_cwl, validator)
             yaml_tree = ast.merge_yml_trees(yaml_tree_raw, {}, tools_cwl)
             yml = yaml_tree.yml
@@ -99,8 +101,9 @@ def rerun_cwltool(directory_realtime: Path, cachedir_path: Path, cwl_tool: str,
         with patch.object(sys, 'argv', testargs):
             args = cli.parser.parse_args()
 
-        yaml_path = f'{cwl_tool}_only.yml'
-        yaml_tree = YamlTree(yaml_path, yml)
+        plugin_ns = 'global' # wic['wic'].get('namespace', 'global')
+        stepid = StepId(yaml_path, plugin_ns)
+        yaml_tree = YamlTree(stepid, yml)
         subgraph = GraphReps(graphviz.Digraph(name=yaml_path), nx.DiGraph(), GraphData(yaml_path))
         compiler_info = compiler.compile_workflow(yaml_tree, args, [], [subgraph], {}, {},
                                                   tools_cwl, True, relative_run_path=False)
