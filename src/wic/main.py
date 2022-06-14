@@ -23,6 +23,7 @@ def get_tools_cwl(cwl_dirs_file: Path) -> Tools:
     Returns:
         Tools: The CWL CommandLineTool definitions found using glob()
     """
+    utils.copy_config_files()
     # Load ALL of the tools.
     tools_cwl: Tools = {}
     cwl_dirs = utils.read_lines_pairs(cwl_dirs_file)
@@ -80,6 +81,7 @@ def get_yml_paths(yml_dirs_file: Path) -> Dict[str, Dict[str, Path]]:
     Returns:
         Dict[str, Dict[str, Path]]: A dict containing the filepath stem and filepath of each yml file
     """
+    utils.copy_config_files()
     yml_dirs = utils.read_lines_pairs(yml_dirs_file)
     # Glob all of the yml files too, so we don't have to deal with relative paths.
     yml_paths_all: Dict[str, Dict[str, Path]] = {}
@@ -109,8 +111,6 @@ def get_yml_paths(yml_dirs_file: Path) -> Dict[str, Dict[str, Path]]:
 def main() -> None:
     """See docs/userguide.md"""
     args = cli.parser.parse_args()
-
-    utils.copy_config_files()
 
     tools_cwl = get_tools_cwl(args.cwl_dirs_file)
     utils.make_plugins_dag(tools_cwl, args.graph_dark_theme)

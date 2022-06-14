@@ -244,8 +244,6 @@ def main() -> None:
 
     args_vals = json.loads(args.config)
 
-    utils.copy_config_files()
-
     tools_cwl = get_tools_cwl(cwl_dirs_file)
     yml_paths = get_yml_paths(yml_dirs_file)
 
