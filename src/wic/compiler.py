@@ -307,9 +307,9 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
             cachedir_path = Path(args.cachedir).absolute()
             #print('setting cachedir_path to', cachedir_path)
             steps[i][step_key]['in']['cachedir_path'] = str(cachedir_path)
-            cwl_dirs_file_abs = str(Path(args.cwl_dirs_file + '_absolute').absolute())
+            cwl_dirs_file_abs = str(Path(args.cwl_dirs_file).absolute())[:-4] + '_absolute.txt'
             steps[i][step_key]['in']['cwl_dirs_file'] = cwl_dirs_file_abs
-            yml_dirs_file_abs = str(Path(args.yml_dirs_file + '_absolute').absolute())
+            yml_dirs_file_abs = str(Path(args.yml_dirs_file).absolute())[:-4] + '_absolute.txt'
             steps[i][step_key]['in']['yml_dirs_file'] = yml_dirs_file_abs
 
             # NOTE: Make the paths within *_dirs_file absolute here

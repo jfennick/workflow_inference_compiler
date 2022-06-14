@@ -244,14 +244,14 @@ def main() -> None:
 
     args_vals = json.loads(args.config)
 
+    utils.copy_config_files()
+
     tools_cwl = get_tools_cwl(cwl_dirs_file)
     yml_paths = get_yml_paths(yml_dirs_file)
 
     # Perform initialization via mutating global variables (This is not ideal)
-    #print(__file__)
-    root_dir = Path(__file__).parent.parent.parent
-    compiler.inference_rules = dict(utils.read_lines_pairs(root_dir / 'inference_rules.txt'))
-    inference.renaming_conventions = utils.read_lines_pairs(root_dir / 'renaming_conventions.txt')
+    compiler.inference_rules = dict(utils.read_lines_pairs(Path('inference_rules.txt')))
+    inference.renaming_conventions = utils.read_lines_pairs(Path('renaming_conventions.txt'))
 
     # Generate schemas for validation
     yaml_stems = utils.flatten([list(p) for p in yml_paths.values()])

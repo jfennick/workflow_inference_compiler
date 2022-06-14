@@ -1,8 +1,5 @@
 import argparse
 import sys
-from pathlib import Path
-
-root_dir = Path(__file__).parent.parent.parent
 
 parser = argparse.ArgumentParser(prog='main', description='Convert a high-level yaml workflow file to CWL.')
 parser.add_argument('--yaml', type=str, required=('--generate_schemas_only' not in sys.argv),
@@ -10,9 +7,9 @@ parser.add_argument('--yaml', type=str, required=('--generate_schemas_only' not 
 
 parser.add_argument('--generate_schemas_only', type=bool, required=False,
                     help='Generate schemas for the files in --cwl_dirs_file and --yml_dirs_file.')
-parser.add_argument('--cwl_dirs_file', type=str, required=False, default=f'{root_dir}/cwl_dirs.txt',
+parser.add_argument('--cwl_dirs_file', type=str, required=False, default='cwl_dirs.txt',
                     help='Configuration file which lists the directories which contains the CWL CommandLineTools')
-parser.add_argument('--yml_dirs_file', type=str, required=False, default=f'{root_dir}/yml_dirs.txt',
+parser.add_argument('--yml_dirs_file', type=str, required=False, default='yml_dirs.txt',
                     help='Configuration file which lists the directories which contains the YAML Workflows')
 # Change default to True for now. See comment in compiler.py
 parser.add_argument('--cwl_output_intermediate_files', type=bool, required=False, default=True,

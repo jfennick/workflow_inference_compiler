@@ -1,6 +1,7 @@
 import argparse
 import copy
 from pathlib import Path
+import subprocess as sub
 from typing import Any, Dict, List, Tuple
 
 import graphviz
@@ -642,3 +643,17 @@ def get_step_name_1(step_1_names: List[str],
         step_name_1 = f'"{step_name_1}"'
 
     return step_name_1
+
+
+def copy_config_files() -> None:
+    """Copies the following configuration files to the current working directory:\n
+    cwl_dirs.txt, yml_dirs.txt, renaming_conventions.txt, inference_rules.txt
+    """
+    files = ['cwl_dirs.txt', 'yml_dirs.txt', 'renaming_conventions.txt', 'inference_rules.txt']
+    src_dir = Path(__file__).parent
+    cwd = Path('.')
+
+    for file in files:
+        if not (cwd / file).exists():
+            cmd = ['cp', str(src_dir / file), str(cwd / file)]
+            sub.run(cmd, check=True)
