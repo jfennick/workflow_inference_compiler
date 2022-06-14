@@ -66,16 +66,16 @@ inputs:
       position: 5
       prefix: --config
 
-  cwl_dir:
-    label: Directory which contains the CWL CommandLineTools
+  cwl_dirs_file:
+    label: Configuration file which lists the directories which contains the CWL CommandLineTools
     doc: |
-      Directory which contains the CWL CommandLineTools
+      Configuration file which lists the directories which contains the CWL CommandLineTools
     type: string
     format:
     - edam:format_2330 # 'Textual format'
     inputBinding:
       position: 6
-      prefix: --cwl_dir
+      prefix: --cwl_dirs_file
 
   yml_dirs_file:
     label: Configuration file which lists the directories which contains the YAML Workflows

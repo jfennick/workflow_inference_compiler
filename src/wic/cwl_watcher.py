@@ -80,6 +80,7 @@ def rerun_cwltool(directory_realtime: Path, cachedir_path: Path, cwl_tool: str,
             root_yaml_tree = {'wic': wic_steps, 'steps': [{cwl_tool: None}]}
             #print('root_yaml_tree')
             #print(yaml.dump(root_yaml_tree))
+            # TODO: Support other namespaces
             plugin_ns = 'global' # wic['wic'].get('namespace', 'global')
             step_id = StepId(yaml_path, plugin_ns)
             y_t = YamlTree(step_id, root_yaml_tree)
@@ -101,7 +102,9 @@ def rerun_cwltool(directory_realtime: Path, cachedir_path: Path, cwl_tool: str,
         with patch.object(sys, 'argv', testargs):
             args = cli.parser.parse_args()
 
+        # TODO: Support other namespaces
         plugin_ns = 'global' # wic['wic'].get('namespace', 'global')
+        yaml_path = f'{cwl_tool}_only.yml'
         stepid = StepId(yaml_path, plugin_ns)
         yaml_tree = YamlTree(stepid, yml)
         subgraph = GraphReps(graphviz.Digraph(name=yaml_path), nx.DiGraph(), GraphData(yaml_path))
@@ -215,8 +218,8 @@ def cli_watcher() -> argparse.Namespace:
                     help='--cwl_tool will be speculatively executed at most max_times')
     parser.add_argument('--config', type=str, required=True,
                     help='This should be a json-encoded representation of the config: YAML subtag of --cwl_tool')
-    parser.add_argument('--cwl_dir', type=str, required=True,
-                    help='Directory which contains the CWL CommandLineTools')
+    parser.add_argument('--cwl_dirs_file', type=str, required=True,
+                    help='Configuration file which lists the directories which contains the CWL CommandLineTools')
     parser.add_argument('--yml_dirs_file', type=str, required=True,
                     help='Configuration file which lists the directories which contains the YAML Workflows')
     return parser.parse_args()
@@ -231,7 +234,7 @@ def main() -> None:
     file_pattern = args.file_pattern
     cwl_tool = args.cwl_tool
     max_times = int(args.max_times)
-    cwl_dir = Path(args.cwl_dir)
+    cwl_dirs_file = Path(args.cwl_dirs_file)
     yml_dirs_file = Path(args.yml_dirs_file)
 
     # Create an empty 'logfile' so that cwl_watcher.cwl succeeds.
@@ -241,7 +244,7 @@ def main() -> None:
 
     args_vals = json.loads(args.config)
 
-    tools_cwl = get_tools_cwl(cwl_dir)
+    tools_cwl = get_tools_cwl(cwl_dirs_file)
     yml_paths = get_yml_paths(yml_dirs_file)
 
     # Perform initialization via mutating global variables (This is not ideal)

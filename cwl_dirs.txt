@@ -1,5 +1,5 @@
 # Comments must be on their own line
-# This file contains a list of directories to search for yml workflow files.
+# This file contains a list of directories to search for CWL CommandLineTools.
 # It is assumed that within each directory, all of the yml filenames within it
 # are unique (i.e. including subdirectories).
 # Namespaces can be used to disambiguate name collisions between directories.
@@ -7,6 +7,7 @@
 # By default, each directory is associated with the namespace 'global', as shown.
 
 # Namespace Directory
-global      examples/
+global      biobb/
+global      cwl_adapters/
 # foo       a/relative/path/
 # bar       /an/absolute/path/

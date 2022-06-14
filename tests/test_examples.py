@@ -29,7 +29,7 @@ def test_examples() -> None:
     with patch.object(sys, 'argv', testargs):
         args = wic.cli.parser.parse_args()
 
-    tools_cwl = wic.main.get_tools_cwl(Path('.'))
+    tools_cwl = wic.main.get_tools_cwl(args.cwl_dirs_file)
     yml_paths = wic.main.get_yml_paths(args.yml_dirs_file)
 
     # Generate schemas for validation
@@ -102,7 +102,7 @@ def test_cwl_embedding_independence() -> None:
     with patch.object(sys, 'argv', testargs):
         args = wic.cli.parser.parse_args()
 
-    tools_cwl = wic.main.get_tools_cwl(Path('.'))
+    tools_cwl = wic.main.get_tools_cwl(args.cwl_dirs_file)
     yml_paths = wic.main.get_yml_paths(args.yml_dirs_file)
 
     # Generate schemas for validation
@@ -220,7 +220,7 @@ def test_inline_subworkflows() -> None:
     with patch.object(sys, 'argv', testargs):
         args = wic.cli.parser.parse_args()
 
-    tools_cwl = wic.main.get_tools_cwl(Path('.'))
+    tools_cwl = wic.main.get_tools_cwl(args.cwl_dirs_file)
     yml_paths = wic.main.get_yml_paths(args.yml_dirs_file)
 
     # Generate schemas for validation
