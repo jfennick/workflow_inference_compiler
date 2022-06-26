@@ -1,4 +1,4 @@
-conda install wget # For download_data.sh
+conda install -c conda-forge wget tar libarchive # For download_data.sh
 
 conda install -c conda-forge -c schrodinger pymol-bundle
 # If you want to use the GUI, also install
