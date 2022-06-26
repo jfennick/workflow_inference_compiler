@@ -4,6 +4,7 @@ wget --no-clobber https://scs.illinois.edu/system/files/inline-files/NCIDiversit
 wget --no-clobber https://scs.illinois.edu/system/files/inline-files/NCINaturalChallenge.rar
 wget --no-clobber https://scs.illinois.edu/system/files/inline-files/NCIOpen.rar
 
-tar -xf NCIDiversity.rar
-tar -xf NCINaturalChallenge.rar
-tar -xf NCIOpen.rar
+# bsdtar is installed with libarchive
+bsdtar -xf NCIDiversity.rar
+bsdtar -xf NCINaturalChallenge.rar
+bsdtar -xf NCIOpen.rar
