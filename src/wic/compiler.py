@@ -159,7 +159,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
     yaml_tree['$schemas'] = ['https://raw.githubusercontent.com/edamontology/edamontology/master/EDAM_dev.owl']
 
     # NOTE: currently mutates yaml_tree (maybe)
-    utils_cwl.maybe_add_requirements(yaml_tree, steps_keys, wic_steps, subkeys)
+    utils_cwl.maybe_add_requirements(yaml_tree, tools, steps_keys, wic_steps, subkeys)
 
     # Collect workflow input parameters
     inputs_workflow = {}

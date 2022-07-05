@@ -8,25 +8,33 @@ from .wic_types import (GraphReps, InternalOutputs, Namespaces, StepId, Tools,
                         WorkflowOutputs, Yaml)
 
 
-def maybe_add_requirements(yaml_tree: Yaml, steps_keys: List[str],
+def maybe_add_requirements(yaml_tree: Yaml, tools: Tools, steps_keys: List[str],
                            wic_steps: Yaml, subkeys: List[str]) -> None:
     """Adds any necessary CWL requirements
 
     Args:
         yaml_tree (Yaml): A tuple of name and yml AST
+        tools (Tools): The CWL CommandLineTool definitions found using get_tools_cwl()
         steps_keys (List[str]): The name of each step in the current CWL workflow
         wic_steps (Yaml): The metadata assocated with the workflow steps
         subkeys (List[str]): The keys associated with subworkflows
     """
+    bools = []
     subwork = []
     scatter = []
     stepinp = []
     for i, step_key in enumerate(steps_keys):
         sub_wic = wic_steps.get(f'({i+1}, {step_key})', {})
+
         if step_key not in subkeys:
-            subwork = ['SubworkflowFeatureRequirement']
+            plugin_ns_i = sub_wic.get('wic', {}).get('namespace', 'global')
+            step_id = StepId(Path(step_key).stem, plugin_ns_i)
+            sub = tools[step_id].cwl['class'] == 'Workflow'
+            bools.append(sub)
+
         if 'scatter' in sub_wic:
             scatter = ['ScatterFeatureRequirement']
+
         in_step = yaml_tree['steps'][i][step_key].get('in')
         sub_wic_copy = copy.deepcopy(sub_wic)
         if 'wic' in sub_wic_copy:
@@ -34,6 +42,9 @@ def maybe_add_requirements(yaml_tree: Yaml, steps_keys: List[str],
         if (utils.recursively_contains_dict_key('valueFrom', in_step) or
             utils.recursively_contains_dict_key('valueFrom', sub_wic_copy)):
             stepinp = ['StepInputExpressionRequirement', 'InlineJavascriptRequirement']
+
+    if (not subkeys == []) or any(bools):
+        subwork = ['SubworkflowFeatureRequirement']
 
     reqs = subwork + scatter + stepinp
     if reqs:
