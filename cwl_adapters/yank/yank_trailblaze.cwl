@@ -1,0 +1,193 @@
+#!/usr/bin/env cwl-runner
+cwlVersion: v1.0
+
+class: CommandLineTool
+
+label: Calculate binding free energy of receptor ligand systems using Yank.
+
+doc: |-
+  Calculate binding free energy of receptor ligand systems using Yank.
+
+requirements:
+# See https://www.commonwl.org/user_guide/15-staging/index.html
+# The documentation on this could be better. It is indeed true that
+# by default, every input file is staged into its own read-only temporary
+# directory. Enabling InitialWorkDirRequirement will stage all of the input
+# files into the output directory, which is writeable. Note that even if you
+# do NOT enable InitialWorkDirRequirement, you can still write out files into
+# subdirectories of the temporary working directory /private/tmp/docker_tmp*
+# However, it appears that only files that are in the root working directory are
+# copied to the output directory; subdirectories (and any files contained) are not!
+
+#  --move-outputs        Move output files to the workflow output directory and delete intermediate output directories (default).
+#  --leave-outputs       Leave output files in intermediate output directories.
+#  --copy-outputs        Copy output files to the workflow output directory and don't delete intermediate output directories.
+
+# (Notice how the documentation says files, but doesn't mention subdirectories.)
+# "Did not find output file with glob pattern: '['output/setup/setup.log']'."
+# Thus, these files will NOT be accessible to glob!!! (glob looks for files
+# w.r.t. the output directory.) Perhaps $(runtime.tmpdir) can be used, but thus
+# far I have been unable to change the default value of {}. The solution is to
+# enable InitialWorkDirRequirement, which eliminates any need to copy, i.e.
+# it is a workaround for the failure to copy files in subdirectories.
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - $(inputs.input_dir_path[0])
+#      - $(inputs.input_dir_path[1])
+      - $(inputs.yaml)
+# NOTE: Yank uses the following snippet to determine the location of the checkpoint files:
+# with moltools.utils.temporary_cd(self._script_dir):
+#            self._check_resume()
+# In other words, in addition to staging the checkpoint files, we also need to
+# stage the yaml script file so that Yank looks for the checkpoint files in the
+# SAME directory!!!
+
+baseCommand: yank
+arguments: [$(inputs.command)]
+
+inputs:
+  command:
+    type: string
+    format: edam:format_string
+    default: script
+
+  input_dir_path:
+    label: Output directory
+    type:
+      type: array
+      items: [Directory, File]
+    format: edam:format_2330 # 'Textual format'
+
+  output_dir_path:
+    label: Output directory
+    type: string
+    format: edam:format_2330 # 'Textual format'
+    default: output
+
+  yaml:
+    label: Input YAML script
+    type: File
+    format: edam:format_3750
+    inputBinding:
+      prefix: -y
+
+  input_receptor_path:
+    label: Input receptor pdb file
+    type: File
+    format:
+    - edam:format_1476
+
+  input_ligand_path:
+    label: Input ligand mol2 file
+    type: File
+    format:
+    - edam:format_3816
+
+outputs:
+  output_log_path:
+    label: Output log file
+    type: File
+    format: edam:format_2330 # 'Textual format'
+    outputBinding:
+      glob: output/experiments/experiments.log
+
+  output_complex_netcdf_path:
+    label: Binary output file for the complex phase
+    type: File
+    format: edam:format_3650
+    outputBinding:
+      glob: output/experiments/complex.nc
+
+  output_solvent_netcdf_path:
+    label: Binary output file for the solvent phase
+    type: File
+    format: edam:format_3650
+    outputBinding:
+      glob: output/experiments/solvent.nc
+
+  output_complex_trailblaze_crd_path:
+    label: Binary coordinates file for the complex phase
+    type: File
+    format: edam:format_3878
+    outputBinding:
+      glob: output/experiments/trailblaze/complex/coordinates.dcd
+
+  output_complex_trailblaze_protocol_path:
+    label: YAML thermodynamic path protocol file for the complex phase
+    type: File
+    format: edam:format_3750
+    outputBinding:
+      glob: output/experiments/trailblaze/complex/protocol.yaml
+
+  output_solvent_trailblaze_crd_path:
+    label: Binary coordinates file for the solvent phase
+    type: File
+    format: edam:format_3878
+    outputBinding:
+      glob: output/experiments/trailblaze/solvent/coordinates.dcd
+
+  output_solvent_trailblaze_protocol_path:
+    label: YAML thermodynamic path protocol file for the solvent phase
+    type: File
+    format: edam:format_3750
+    outputBinding:
+      glob: output/experiments/trailblaze/solvent/protocol.yaml
+
+# Setup files should still be present
+
+  output_complex_setup_crd_path:
+    label: Output coordinates file for the complex phase (AMBER crd)
+    type: File
+    format: edam:format_3878
+    outputBinding:
+      glob: output/setup/systems/**/complex.inpcrd
+
+  output_complex_setup_top_path:
+    label: Output topology file for the complex phase (AMBER crd)
+    type: File
+    format: edam:format_3881
+    outputBinding:
+      glob: output/setup/systems/**/complex.prmtop
+
+  output_solvent_setup_crd_path:
+    label: Output coordinates file for the solvent phase (AMBER crd)
+    type: File
+    format: edam:format_3878
+    outputBinding:
+      glob: output/setup/systems/**/solvent.inpcrd
+
+  output_solvent_setup_top_path:
+    label: Output topology file for the solvent phase (AMBER crd)
+    type: File
+    format: edam:format_3881
+    outputBinding:
+      glob: output/setup/systems/**/solvent.prmtop
+
+# See https://rabix.io/cwl-patterns.html
+# Note that we need to list individual output files above (so we can add format
+# & refer to them in later workflow steps), but by default CWL will copy them
+# from their subdirectory to the root output directory. To maintain
+# subdirectories, we also need to use output_dir_path!
+  output_dir_path:
+    type:
+      type: array
+      items: [Directory, File]
+    outputBinding: {glob: "*"}
+    # When InitialWorkDirRequirement is enabled, the entire docker_tmp*
+    # working directory gets copied to the output directory.
+    # Use "*" to glob into it, or use "." to output everything.
+    format: edam:format_2330 # 'Textual format'
+
+#  output_dir_path:
+#    type: Directory
+#    format: edam:format_2330 # 'Textual format'
+#    outputBinding: { glob: "*" }
+     # This version of output_dir_path works with ".", but does not work with "*":
+     # "Multiple matches for output item that is a single file."
+
+$namespaces:
+  edam: https://edamontology.org/
+
+$schemas:
+- https://raw.githubusercontent.com/edamontology/edamontology/master/EDAM_dev.owl
