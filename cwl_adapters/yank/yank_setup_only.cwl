@@ -35,12 +35,10 @@ requirements:
     listing: |
       ${
         var lst = [];
-        // Only add input_dir_path if it is non-empty to avoid:
-        // "Cannot make job: Expression evaluation error: list index out of range"
-        if (inputs.input_dir_path.length > 0) {
-          lst.push(inputs.input_dir_path[0]);
+        for (var i = 0; i < inputs.input_dir_path.length; i++) {
+          lst.push(inputs.input_dir_path[i]);
         }
-        lst.push(inputs.yaml);
+        //lst.push(inputs.yaml);
         return lst;
       }
 # NOTE: Yank uses the following snippet to determine the location of the checkpoint files:
@@ -50,14 +48,14 @@ requirements:
 # stage the yaml script file so that Yank looks for the checkpoint files in the
 # SAME directory!!!
 
-baseCommand: yank
-arguments: [$(inputs.command), "--setup-only"]
-
+baseCommand: python3
+arguments: [$(inputs.script)]
 inputs:
-  command:
-    type: string
-    format: edam:format_string
-    default: script
+  script:
+    type: File
+    default:
+      class: File
+      location: yank_wrapper.py
 
   input_dir_path:
     label: Output directory
@@ -67,31 +65,83 @@ inputs:
     format: edam:format_2330 # 'Textual format'
     # NOTE: Cannot provide default value here; add [] to the yml file.
     #default: []
+    # No inputBinding
 
   output_dir_path:
     label: Output directory
     type: string
     format: edam:format_2330 # 'Textual format'
     default: output
+    # No inputBinding
+
+  phase:
+    type: string
+    format: edam:format_string
+    default: production
+    inputBinding:
+      prefix: --phase
 
   yaml:
     label: Input YAML script
     type: File
     format: edam:format_3750
     inputBinding:
-      prefix: -y
+      prefix: --yaml
 
-  input_receptor_path:
-    label: Input receptor pdb file
+# NOTE: It is unclear if cwltool supports mutually exclusive parameters.
+# See https://github.com/common-workflow-language/cwltool/issues/358
+# See https://www.commonwl.org/user_guide/misc/#setting-mutually-exclusive-parameters
+# For now, we can create a separate CommandLineTool for the receptor/ligand setup route.
+
+#  input_receptor_path:
+#    label: Input receptor pdb file
+#    type: File
+#    format:
+#    - edam:format_1476
+#    inputBinding:
+#      prefix: --input_receptor_path
+
+#  input_ligand_path:
+#    label: Input ligand mol2 file
+#    type: File
+#    format:
+#    - edam:format_3816
+#    inputBinding:
+#      prefix: --input_ligand_path
+
+# See http://getyank.org/latest/yamlpages/systems.html#yaml-systems-user-defined
+
+  input_complex_top_zip_path:
+    label: Input complex top zip file
     type: File
     format:
-    - edam:format_1476
+    - edam:format_3987
+    inputBinding:
+      prefix: --input_complex_top_zip_path
 
-  input_ligand_path:
-    label: Input ligand mol2 file
+  input_complex_crd_path:
+    label: Input ligand gro file
     type: File
     format:
-    - edam:format_3816
+    - edam:format_2033
+    inputBinding:
+      prefix: --input_complex_crd_path
+
+  input_ligand_top_zip_path:
+    label: Input ligand top zip file
+    type: File
+    format:
+    - edam:format_3987
+    inputBinding:
+      prefix: --input_ligand_top_zip_path
+
+  input_ligand_crd_path:
+    label: Input ligand gro file
+    type: File
+    format:
+    - edam:format_2033
+    inputBinding:
+      prefix: --input_ligand_crd_path
 
 outputs:
   output_log_path:
@@ -101,33 +151,35 @@ outputs:
     outputBinding:
       glob: output/setup/setup.log # $(runtime.outdir)/output/setup/setup.log also works
 
-  output_complex_setup_crd_path:
-    label: Output coordinates file for the complex phase (AMBER crd)
-    type: File
-    format: edam:format_3878
-    outputBinding:
-      glob: output/setup/systems/**/complex.inpcrd
+# Actually, these outputs are only relevant for the receptor/ligand setup route.
 
-  output_complex_setup_top_path:
-    label: Output topology file for the complex phase (AMBER crd)
-    type: File
-    format: edam:format_3881
-    outputBinding:
-      glob: output/setup/systems/**/complex.prmtop
+#  output_complex_setup_crd_path:
+#    label: Output coordinates file for the complex phase (AMBER crd)
+#    type: File
+#    format: edam:format_3878
+#    outputBinding:
+#      glob: output/setup/systems/**/complex.inpcrd
 
-  output_solvent_setup_crd_path:
-    label: Output coordinates file for the solvent phase (AMBER crd)
-    type: File
-    format: edam:format_3878
-    outputBinding:
-      glob: output/setup/systems/**/solvent.inpcrd
+#  output_complex_setup_top_path:
+#    label: Output topology file for the complex phase (AMBER crd)
+#    type: File
+#    format: edam:format_3881
+#    outputBinding:
+#      glob: output/setup/systems/**/complex.prmtop
 
-  output_solvent_setup_top_path:
-    label: Output topology file for the solvent phase (AMBER crd)
-    type: File
-    format: edam:format_3881
-    outputBinding:
-      glob: output/setup/systems/**/solvent.prmtop
+#  output_solvent_setup_crd_path:
+#    label: Output coordinates file for the solvent phase (AMBER crd)
+#    type: File
+#    format: edam:format_3878
+#    outputBinding:
+#      glob: output/setup/systems/**/solvent.inpcrd
+
+#  output_solvent_setup_top_path:
+#    label: Output topology file for the solvent phase (AMBER crd)
+#    type: File
+#    format: edam:format_3881
+#    outputBinding:
+#      glob: output/setup/systems/**/solvent.prmtop
 
 # See https://rabix.io/cwl-patterns.html
 # Note that we need to list individual output files above (so we can add format
