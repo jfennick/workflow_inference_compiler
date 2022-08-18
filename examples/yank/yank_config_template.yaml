@@ -11,9 +11,9 @@ options:
 
   minimize: yes # Even though we already did MD stability analysis, use yes due to absurd settings below.
   minimize_max_iterations: 10 # default 1000
-  number_of_equilibration_iterations: 10 # default 0
+  number_of_equilibration_iterations: 20 # default 0
   default_number_of_iterations: 10 #500  # default 5000
-  default_nsteps_per_iteration: 20 # 50 # default 500; this is absurdly small due to CPU platform
+  default_nsteps_per_iteration: 50 # default 500; this is absurdly small due to CPU platform
   default_timestep: 2*femtoseconds
   checkpoint_interval: 10
   switch_phase_interval: 10 # NOTE: must be >= checkpoint_interval, else infinite loop!
