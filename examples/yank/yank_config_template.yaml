@@ -5,15 +5,15 @@ options:
   resume_simulation: yes
 
   pressure: 1*atmosphere
-  platform: OpenCL # CUDA
+  #platform: OpenCL # CUDA # For now, only CPU platform available with Docker
   constraints: HBonds
   anisotropic_dispersion_cutoff: auto
 
   minimize: no # Use no because we already did MD stability analysis; otherwise use yes
   minimize_max_iterations: 10 # default 1000
-  number_of_equilibration_iterations: 25 # default 0
+  number_of_equilibration_iterations: 10 # default 0
   default_number_of_iterations: 10 #500  # default 5000
-  default_nsteps_per_iteration: 50 # default 500
+  default_nsteps_per_iteration: 10 # 50 # default 500; this is absurdly small due to CPU platform
   default_timestep: 2*femtoseconds
   checkpoint_interval: 10
   switch_phase_interval: 10 # NOTE: must be >= checkpoint_interval, else infinite loop!
@@ -76,14 +76,14 @@ protocols:
       trailblazer_options:
         n_equilibration_iterations: 10
         n_samples_per_state: 5
-        thermodynamic_distance: 1.0
+        thermodynamic_distance: 2.0 # default 1.0; use 0.5 for accuracy
         distance_tolerance: 0.01
     solvent:
       alchemical_path: auto
       trailblazer_options:
         n_equilibration_iterations: 10
         n_samples_per_state: 5
-        thermodynamic_distance: 1.0
+        thermodynamic_distance: 2.0 # default 1.0; use 0.5 for accuracy
         distance_tolerance: 0.01
 
 samplers:

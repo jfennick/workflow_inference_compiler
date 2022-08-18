@@ -9,6 +9,8 @@ doc: |-
   Calculate binding free energy of receptor ligand systems using Yank.
 
 requirements:
+  - class: DockerRequirement
+    dockerPull: docker.io/jakefennick/yank
 # See https://www.commonwl.org/user_guide/15-staging/index.html
 # The documentation on this could be better. It is indeed true that
 # by default, every input file is staged into its own read-only temporary
@@ -36,9 +38,13 @@ requirements:
       ${
         var lst = [];
         for (var i = 0; i < inputs.input_dir_path.length; i++) {
-          lst.push(inputs.input_dir_path[i]);
+          var dict = {
+            "entry": inputs.input_dir_path[i],
+            "writable": true // Important!
+          };
+          lst.push(dict);
         }
-       //lst.push(inputs.yaml);
+        //lst.push(inputs.yaml);
         return lst;
       }
 # NOTE: Yank uses the following snippet to determine the location of the checkpoint files:

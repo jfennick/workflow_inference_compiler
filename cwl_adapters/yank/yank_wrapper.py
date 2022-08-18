@@ -99,9 +99,7 @@ def make_systems_tag_group2(complex_top_filename: str, ligand_top_filename: str,
     Returns:
         Dict[str, Any]: The basic tags which describe a molecular system.
     """
-    # TODO: Automatically find gromacs_include_dir
-    #gromacs_include_dir = '/home/ec2-user/gromacs-2020.6/share/top/'
-    gromacs_include_dir = '/Users/jakefennick/opt/anaconda3/envs/wic/share/gromacs/top/'
+    gromacs_include_dir = '/miniconda/share/gromacs/top/'
 
     systems = {'systems': {'system_name': {
         'phase1_path': [complex_top_filename, args.input_complex_crd_path],
@@ -152,7 +150,11 @@ def unzip_topology_files(zip_path: str) -> str:
     filenames = []
     with zipfile.ZipFile(zip_path, 'r') as zip_file:
         filenames = zip_file.namelist()
-        zip_file.extractall()
+        # This extracts to a temporary directory which is not writable when using Docker.
+        #zip_file.extractall(Path(outdir).parent)
+    # Instead, use unzip which extracts in-place (in the same directory)
+    cmd = ['unzip', '-n', zip_path] # Use -n to avoid overwriting files.
+    sub.run(cmd, check=True)
     top_filenames = [fn for fn in filenames if Path(fn).suffix == '.top']
     if len(top_filenames) != 1:
         print(f'Error! There should be exactly 1 *.top file: {top_filenames}')
