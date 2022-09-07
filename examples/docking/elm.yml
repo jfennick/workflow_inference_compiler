@@ -40,6 +40,7 @@ wic:
         # do not want to pass '*ligand.sdf' all the way through to input_path.
         # NOTE: We (currently) have to use the auto-generated input name to reference the call site.
         dsb__step__1__docking.yml___docking__step__1__flc.yml___flc__step__1__obgen___input_path:
+        #dsb__step__1__obgen___input_path:
           source: '*ligand.sdf'
           valueFrom: $(self[inputs.__index__]) # self refers to the array of input values
       wic:
@@ -48,13 +49,13 @@ wic:
         steps:
           (1, docking.yml):
             wic:
-              inlineable: False
+              inlineable: False #True
               steps:
                 (1, flc.yml):
                   wic:
                     # Since the above name refers to an embedded subworkflow, is NOT inlineing-invariant.
                     # Thus, if we want the tests to pass, we also need to disable inlineing here.
-                    inlineable: False
+                    inlineable: False #True
 
 
 # Beware 0 vs 1 -based indexing! JavaScript (and thus CWL) uses 0-based indices.

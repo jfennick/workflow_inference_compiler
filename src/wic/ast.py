@@ -1,5 +1,6 @@
 import copy
 from pathlib import Path
+import re
 from typing import Dict, List
 
 from mergedeep import merge, Strategy
@@ -7,7 +8,7 @@ from jsonschema import Draft202012Validator
 import yaml
 
 from . import utils
-from .wic_types import Namespaces, Yaml, Tools, YamlTree, YamlForest, StepId
+from .wic_types import Namespaces, Yaml, Tools, YamlTree, YamlForest, StepId, NodeData, RoseTree
 
 # NOTE: AST = Abstract Syntax Tree
 
@@ -253,7 +254,7 @@ def get_inlineable_subworkflows(yaml_tree_tuple: YamlTree,
     tools_stems = [stepid.stem for stepid in tools]
     subkeys = [key for key in steps_keys if key not in tools_stems]
 
-    # All subworkflows are inlineable, except backends and scattered subworkflows.
+    # All subworkflows are inlineable, except scattered subworkflows.
     inlineable = wic['wic'].get('inlineable', True)
     namespaces = [namespaces_init] if inlineable and namespaces_init != [] and not backend else []
 
@@ -289,18 +290,26 @@ def inline_subworkflow(yaml_tree_tuple: YamlTree, tools: Tools, namespaces: Name
 
     wic = {'wic': yaml_tree.get('wic', {})}
     if 'backends' in wic['wic']:
-        # Pass namespaces through unmodified
-        backends_trees = []
-        for stepid, back in wic['wic']['backends'].items():
-            backend_tree = inline_subworkflow(YamlTree(stepid, back), tools, namespaces)
-            backends_trees.append(backend_tree)
-        yaml_tree['wic']['backends'] = dict(backends_trees)
-        return YamlTree(step_id, yaml_tree)
+        if len(namespaces) == 1: # and namespaces[0] == yaml_name ?
+            (back_name_, yaml_tree) = utils.extract_backend(yaml_tree, wic['wic'], Path(''))
+            yaml_tree = {'steps': yaml_tree['steps']} # Remove wic tag
+            return YamlTree(step_id, yaml_tree) # TODO: check step_id
+        else:
+            # Pass namespaces through unmodified
+            backends_trees = []
+            for stepid, back in wic['wic']['backends'].items():
+                backend_tree = inline_subworkflow(YamlTree(stepid, back), tools, namespaces)
+                backends_trees.append(backend_tree)
+            yaml_tree['wic']['backends'] = dict(backends_trees)
+            return YamlTree(step_id, yaml_tree)
 
     steps: List[Yaml] = yaml_tree['steps']
     steps_keys = utils.get_steps_keys(steps)
     tools_stems = [stepid.stem for stepid in tools]
     subkeys = [key for key in steps_keys if key not in tools_stems]
+
+    # TODO: We really need to inline the wic tags as well. This may be complicated
+    # because due to overloading we may need to modify parent wic tags.
 
     for i, step_key in enumerate(steps_keys):
         yaml_stem = Path(yaml_name).stem
@@ -328,3 +337,121 @@ def inline_subworkflow(yaml_tree_tuple: YamlTree, tools: Tools, namespaces: Name
                     steps[i][step_key] = sub_yml_tree
 
     return YamlTree(step_id, yaml_tree)
+
+
+def inline_subworkflow_cwl(rose_tree: RoseTree) -> RoseTree:
+    """Inlines the given compiled CWL subworkflow into its immediate parent workflow.
+
+    Args:
+        rose_tree (RoseTree): The data associated with compiled subworkflows
+
+    Returns:
+        RoseTree: The updated root workflow with the given compiled CWL subworkflow inlined into its immediate parent workflow.
+    """
+    node_data: NodeData = rose_tree.data
+    namespaces = node_data.namespaces
+    yaml_stem = node_data.name
+    cwl_tree = node_data.compiled_cwl
+    #print('cwl_tree', yaml.dump(cwl_tree))
+    #print('subtrees')
+    #for t in rose_tree.sub_trees:
+    #    print(yaml.dump(t.data.compiled_cwl))
+
+    steps = cwl_tree['steps']
+    steps_keys = list(steps.keys())
+    subkeysdict = {'___'.join(t.data.namespaces):t.data.compiled_cwl for t in rose_tree.sub_trees}
+    #print('subkeys', list(subkeysdict.keys()))
+    #print('steps_keys', steps_keys)
+    steps_new = {}
+
+    for i, step_key in enumerate(steps_keys):
+        if step_key in list(subkeysdict.keys()):
+            inputs = steps[step_key]['in']
+            scattervars = steps[step_key].get('scatter', [])
+
+            sub_cwl_tree = subkeysdict[step_key]
+            sub_steps = sub_cwl_tree['steps']
+            sub_steps_new = {}
+            for substepkey, substepval in sub_steps.items():
+                substep_inputs = substepval['in']
+                substep_inputs_new = {}
+                for subinputkey, subinputval in substep_inputs.items():
+                    # (deep?) copy the inputs and prepend namespace
+                    if isinstance(subinputval, str):
+                        substep_inputs_new[subinputkey] = step_key + '___' + subinputval
+                    #if isinstance(subinputval, Dict) and 'source' in subinputval:
+                    #    subinputval['source'] = step_key + '___' + subinputval['source']
+                    #    substep_inputs_new[subinputkey] = subinputval
+
+                    if isinstance(subinputval, Dict) and subinputval.get('source') in inputs:
+                        # Replace the formal parameter in the subworkflow with
+                        # the actual parameter in the parent workflow.
+                        newval = inputs[subinputval.get('source')]
+                        substep_inputs_new[subinputkey] = newval
+                        # Copy any input variables referenced, i.e.
+                        # initial scatter and/or slice for step 1
+                        m = re.match(r'.*\[inputs\.(.*)\].*', str(newval))
+                        if m:
+                            inputvarname = m.groups()[0]
+                            if inputvarname:
+                                substep_inputs_new[inputvarname] = inputs[inputvarname]
+                                if inputvarname in scattervars:
+                                    if 'scatter' in substepval:
+                                        substepval['scatter'] += inputvarname
+                                    else:
+                                        substepval['scatter'] = [inputvarname]
+
+                    # Distribute scatter across subworkflow dependencies
+                    # i.e. https://en.wikipedia.org/wiki/Distributive_property
+                    if '/' in subinputval:
+                        if 'scatter' in substepval:
+                            substepval['scatter'] += subinputkey
+                        else:
+                            substepval['scatter'] = [subinputkey]
+                # Overwrite inputs
+                substepval['in'] = substep_inputs_new
+
+                # modify run tag
+                runstr = substepval['run']
+                if runstr.startswith('../'):
+                    substepval['run'] = runstr[len('../'):]
+                # TODO: Consider general case of prepending namespace / directory
+
+                # prepend namespace to step names
+                namespaced = step_key + '___' + substepkey
+                sub_steps_new[namespaced] = substepval
+
+            sub_cwl_tree['steps'] = sub_steps_new
+
+            # Insert the steps from the subworkflow
+            steps_new.update(sub_steps_new)
+        else:
+            # Otherwise, just copy the step
+            steps_new[step_key] = steps[step_key]
+
+    cwl_tree['steps'] = steps_new
+
+    # Finally, swap / and ___ in the outputs in the parent workflow
+    outputs = cwl_tree['outputs']
+    outputs_new = {}
+    for outkey, outval in outputs.items():
+        if 'output_all' in outkey:
+            continue # Skip
+
+        source = outval['outputSource']
+        source = source.replace('/', '___')
+        source_split = source.split('___')
+        source = '___'.join(source_split[:-1]) + '/' + source_split[-1]
+        # NOTE: This indexing does not work in the general case.
+        outval['outputSource'] = source
+        outputs_new[outkey] = outval
+
+    cwl_tree['outputs'] = outputs_new
+    # TODO: recursion?
+
+    #print('cwl_tree', yaml.dump(cwl_tree))
+    #print('subtrees')
+    #for t in rose_tree.sub_trees:
+    #    print(yaml.dump(t.data.compiled_cwl))
+
+    return RoseTree(rose_tree.data, [])
