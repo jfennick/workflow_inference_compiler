@@ -339,19 +339,42 @@ def inline_subworkflow(yaml_tree_tuple: YamlTree, tools: Tools, namespaces: Name
     return YamlTree(step_id, yaml_tree)
 
 
+def move_slash_last(source_new: str) -> str:
+    """Move / to the last ___ position\n
+       (Moving to the last position works because we are inlineing recursively.)
+
+    Args:
+        source_new (str): A string representing a CWL dependency, i.e. containing /
+
+    Returns:
+        str: source_new with / moved to the last ___ position
+    """
+    if '/' in source_new:
+        source_new = source_new.replace('/', '___')
+        source_split = source_new.split('___')
+        source_new = '___'.join(source_split[:-1]) + '/' + source_split[-1]
+        return source_new
+    else:
+        return source_new
+
+
 def inline_subworkflow_cwl(rose_tree: RoseTree) -> RoseTree:
-    """Inlines the given compiled CWL subworkflow into its immediate parent workflow.
+    """Inlines all compiled CWL subworkflows into the root workflow.
 
     Args:
         rose_tree (RoseTree): The data associated with compiled subworkflows
 
     Returns:
-        RoseTree: The updated root workflow with the given compiled CWL subworkflow inlined into its immediate parent workflow.
+        RoseTree: The updated root workflow with all compiled CWL subworkflows recursively inlined.
     """
+    # NOTE: This code is a little bit nasty, and I absolutely do not guarantee that it won't break in the future.
+    if rose_tree.sub_trees == []:
+        return rose_tree
+
+    sub_trees = [inline_subworkflow_cwl(t) for t in rose_tree.sub_trees]
+
     node_data: NodeData = rose_tree.data
-    namespaces = node_data.namespaces
-    yaml_stem = node_data.name
-    cwl_tree = node_data.compiled_cwl
+    cwl_tree = copy.deepcopy(node_data.compiled_cwl)
     #print('cwl_tree', yaml.dump(cwl_tree))
     #print('subtrees')
     #for t in rose_tree.sub_trees:
@@ -359,13 +382,16 @@ def inline_subworkflow_cwl(rose_tree: RoseTree) -> RoseTree:
 
     steps = cwl_tree['steps']
     steps_keys = list(steps.keys())
-    subkeysdict = {'___'.join(t.data.namespaces):t.data.compiled_cwl for t in rose_tree.sub_trees}
+    # NOTE: Only use the last namespace since we are recursively inlineing.
+    subkeysdict = {t.data.namespaces[-1]:copy.deepcopy(t.data.compiled_cwl) for t in sub_trees} # NOT rose_tree.sub_trees
     #print('subkeys', list(subkeysdict.keys()))
     #print('steps_keys', steps_keys)
     steps_new = {}
 
+    count = 0
     for i, step_key in enumerate(steps_keys):
         if step_key in list(subkeysdict.keys()):
+            count += 1 # Check that we inline all subworkflows
             inputs = steps[step_key]['in']
             scattervars = steps[step_key].get('scatter', [])
 
@@ -376,18 +402,33 @@ def inline_subworkflow_cwl(rose_tree: RoseTree) -> RoseTree:
                 substep_inputs = substepval['in']
                 substep_inputs_new = {}
                 for subinputkey, subinputval in substep_inputs.items():
-                    # (deep?) copy the inputs and prepend namespace
+                    # By default, copy the inputs and prepend namespace
                     if isinstance(subinputval, str):
+                        source = move_slash_last(subinputval)
                         substep_inputs_new[subinputkey] = step_key + '___' + subinputval
-                    #if isinstance(subinputval, Dict) and 'source' in subinputval:
-                    #    subinputval['source'] = step_key + '___' + subinputval['source']
-                    #    substep_inputs_new[subinputkey] = subinputval
 
-                    if isinstance(subinputval, Dict) and subinputval.get('source') in inputs:
+                    if isinstance(subinputval, Dict):
+                        source = subinputval['source']
+                        source_new = move_slash_last(subinputval['source'])
+                        subinputval['source'] = step_key + '___' + source_new
+                        substep_inputs_new[subinputkey] = subinputval
+
+                    if source in inputs:
                         # Replace the formal parameter in the subworkflow with
                         # the actual parameter in the parent workflow.
-                        newval = inputs[subinputval.get('source')]
-                        substep_inputs_new[subinputkey] = newval
+                        newval = inputs[source]
+
+                        if isinstance(newval, str):
+                            source_new = move_slash_last(newval)
+                            # NOTE: Do not namespace; already namespaced in parent workflow.
+                            newval = source_new # step_key + '___' + source_new
+
+                        if isinstance(newval, Dict) and 'source' in newval:
+                            source_new = move_slash_last(newval['source'])
+                            # NOTE: Do not namespace; already namespaced in parent workflow.
+                            newval['source'] = source_new # step_key + '___' + source_new
+
+                        substep_inputs_new[subinputkey] = newval # Overwrite
                         # Copy any input variables referenced, i.e.
                         # initial scatter and/or slice for step 1
                         m = re.match(r'.*\[inputs\.(.*)\].*', str(newval))
@@ -397,21 +438,31 @@ def inline_subworkflow_cwl(rose_tree: RoseTree) -> RoseTree:
                                 substep_inputs_new[inputvarname] = inputs[inputvarname]
                                 if inputvarname in scattervars:
                                     if 'scatter' in substepval:
-                                        substepval['scatter'] += inputvarname
+                                        substepval['scatter'] += [inputvarname]
                                     else:
                                         substepval['scatter'] = [inputvarname]
 
-                    # Distribute scatter across subworkflow dependencies
+                    # Distribute scatter unconditionally across ALL subworkflow dependencies
                     # i.e. https://en.wikipedia.org/wiki/Distributive_property
-                    if '/' in subinputval:
-                        if 'scatter' in substepval:
-                            substepval['scatter'] += subinputkey
-                        else:
-                            substepval['scatter'] = [subinputkey]
+# NOTE: This code assumes the user has manually performed https://en.wikipedia.org/wiki/Loop-invariant_code_motion
+# on the yml. In other words, it assumes that the user has separated / extracted all non-scattered steps from all
+# steps that should be scattered. i.e. 1 receptor vs N ligands. Otherwise, we need to transitively follow the edges
+# until we can determine the cardinality. It may be possible to avoid the transitive search by bootstrapping in-order,
+# but for now let's require the user to manually modify their yml.
+                    if scattervars:
+                        if ((isinstance(subinputval, str) and '/' in subinputval) or
+                            (isinstance(subinputval, Dict) and '/' in subinputval['source'])):
+                            if 'scatter' in substepval:
+                                if subinputkey not in substepval['scatter']:
+                                    substepval['scatter'] += [subinputkey]
+                            else:
+                                substepval['scatter'] = [subinputkey]
+                            substepval['scatterMethod'] = 'dotproduct'
+
                 # Overwrite inputs
                 substepval['in'] = substep_inputs_new
 
-                # modify run tag
+                # Modify run tag
                 runstr = substepval['run']
                 if runstr.startswith('../'):
                     substepval['run'] = runstr[len('../'):]
@@ -429,29 +480,31 @@ def inline_subworkflow_cwl(rose_tree: RoseTree) -> RoseTree:
             # Otherwise, just copy the step
             steps_new[step_key] = steps[step_key]
 
+    if count != len(subkeysdict):
+        print('Error! Not all subworkflows inlined!')
+
     cwl_tree['steps'] = steps_new
 
-    # Finally, swap / and ___ in the outputs in the parent workflow
+    # Finally, for all outputs in the parent workflow
     outputs = cwl_tree['outputs']
     outputs_new = {}
     for outkey, outval in outputs.items():
         if 'output_all' in outkey:
-            continue # Skip
+            continue # Skip for now.
 
-        source = outval['outputSource']
-        source = source.replace('/', '___')
-        source_split = source.split('___')
-        source = '___'.join(source_split[:-1]) + '/' + source_split[-1]
-        # NOTE: This indexing does not work in the general case.
-        outval['outputSource'] = source
+        outval['outputSource'] = move_slash_last(outval['outputSource'])
         outputs_new[outkey] = outval
 
     cwl_tree['outputs'] = outputs_new
-    # TODO: recursion?
+
+    data = NodeData(node_data.namespaces, node_data.name, node_data.yml, cwl_tree, # NOTE: Only updating cwl_tree
+                    node_data.workflow_inputs_file, node_data.explicit_edge_defs,
+                    node_data.explicit_edge_calls, node_data.graph,
+                    node_data.inputs_workflow, node_data.step_name_1)
 
     #print('cwl_tree', yaml.dump(cwl_tree))
     #print('subtrees')
     #for t in rose_tree.sub_trees:
     #    print(yaml.dump(t.data.compiled_cwl))
 
-    return RoseTree(rose_tree.data, [])
+    return RoseTree(data, [])
