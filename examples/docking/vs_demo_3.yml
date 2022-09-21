@@ -1,17 +1,15 @@
 steps:
-  - obabel_extract_models_sdf:
+  - setup_receptor.yml:
+  - extract_molecules_sdf:
       in:
         input_path: ../data/NCIOpen.sdf
         output_sdf_path: '&ligands.sdf'
         first_molecule: "1"
         last_molecule: "1"
-        arg1: -r
-  - receptor.yml:
-  - obabel_split_sdf:
+  - split_sdf:
       in:
   #      input_path: '*ligands.sdf'
         output_sdf_path: '&ligand.sdf' # Array type
-        arg1: -m
   - ligand_modeling_docking.yml: # scatter
   - autodock_vina_filter:
       in:
@@ -20,7 +18,7 @@ steps:
         max_num_decoys_per_ligand: 1
         max_num_decoys_total: 1
         input_batch_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
-        #input_batch_pdbqt_path: ~obabel_split_pdbqt/output_pdb_path # Not necessary if using explicit edge
+        #input_batch_pdbqt_path: ~split_pdbqt/output_pdb_path # Not necessary if using explicit edge
         output_batch_pdbqt_path: '&ligand.pdbqt'
   - ligand_topol_params.yml: # scatter
   - stability.yml: # scatter
@@ -29,22 +27,27 @@ wic:
   graphviz:
     label: Cheminformatics + Docking + Initial Topology Setup
   steps:
-    (2, receptor.yml):
+    (1, setup_receptor.yml):
+      in:
+        pdb_id: 1ntp
       wic:
         inlineable: False
     (4, ligand_modeling_docking.yml):
       wic:
         inlineable: False
-      scatter: [ligand_modeling_docking__step__1__flc.yml___flc__step__1__obgen___input_path]
+      scatter: [sdf_path]
     (6, ligand_topol_params.yml):
       wic:
         inlineable: False
-      scatter: [ligand_topol_params__step__1__obabel_convert_mol2___input_path]
+      scatter: [pdbqt_path]
     (7, stability.yml):
-      scatter: [stability__step__1__setup.yml___setup__step__1__editconf___input_crd_path,
-                stability__step__1__setup.yml___setup__step__2__solvate___input_top_zip_path]
+      #in:
+      #  crd_path: '*complex_vac.pdb'
+      #  top_zip_path: '*complex_vac.zip'
+      scatter: [crd_path, top_zip_path]
       scatterMethod: dotproduct
       wic:
+        inlineable: False
         graphviz:
           label: Docking + MD Stability Analysis + Binding Free Energy
         steps:

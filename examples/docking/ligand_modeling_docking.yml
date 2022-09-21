@@ -1,3 +1,9 @@
+inputs:
+  sdf_path:
+    type: File
+    format:
+    - edam:format_3814
+
 steps:
 # Ligand
 # NOTE: Searching for conformers tends to cause the ligand to curl up into a ball.
@@ -31,14 +37,17 @@ steps:
         input_box_path: '*box.pdb'
         output_pdbqt_path: '&decoys_ligand.pdbqt'
         output_log_path: '&vina.log'
-  - obabel_split_pdbqt:
+  - split_pdbqt:
       in:
         #input_path: '*decoys_ligand.pdbqt' # Scalar type
         #input_path:
         #  source: ~autodock_vina_batch/output_batch_pdbqt_path
         output_pdb_path: '&ligand_nested_split.pdbqt' # 1D Array type, but
-        arg1: -m
-        arg2: -xh
-        arg3: -xn
       #out:
       #  output_pdb_path: # 2D Array type due to scattering
+
+wic:
+  steps:
+    (1, flc.yml):
+      in:
+        sdf_path: ~sdf_path

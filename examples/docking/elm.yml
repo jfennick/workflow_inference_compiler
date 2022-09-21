@@ -1,52 +1,43 @@
 steps:
-- obabel_extract_models_sdf:
+- extract_molecules_sdf:
     in:
       input_path: ../data/NCIOpen.sdf
       output_sdf_path: '&ligands.sdf'
       first_molecule: "1"
       last_molecule: "2"
-      arg1: -r
 # NOTE: We need to extract the models first, before splitting them into separate files.
 # If we try to do both simultaneously, obabel ignores -f and -l and outputs ALL models.
-- obabel_split_sdf:
+- split_sdf:
     in:
       input_path: '*ligands.sdf'
       output_sdf_path: '&ligand.sdf' # Array type
-      arg1: -m
-- receptor.yml:
+- setup_receptor.yml:
 - dsb.yml:
 # NOTE: Do not add scattering arguments here, add them to the wic: metadata annotations.
 # (We want this information at the call site, not inserted within the subworkflow.)
 
 wic:
   steps:
-    (1, obabel_extract_models_sdf):
+    (1, extract_molecules_sdf):
       wic:
         graphviz:
           label: Choose Ligands from\nCheminformatics Database
-    (2, obabel_split_sdf):
+    (2, split_sdf):
       wic:
         graphviz:
           label: Split Ligands into\nSeparate Files
-    (3, receptor.yml):
+    (3, setup_receptor.yml):
+      in:
+        pdb_id: 1ntp
       wic:
         inlineable: False # Due to yml wic tag inlineing issue
     (4, dsb.yml):
-      scatter: [__index__]
+      scatter: [sdf_path]
       in:
-        # Define an auxilary input variable to use in valueFrom; it is NOT actually an input!
-        # (The 'unused' input will generate a warning at runtime.)
-        __index__: # NOTE: Currently need to use double underscores.
-          source: [0, 1] # NOTE: Use zero-based indexing! See comment below.
-          type: int[]
         # Note that since we want to scatter over the entire subworkflow, we do
         # not want to go any deeper into the syntax tree / call stack, i.e. we
         # do not want to pass '*ligand.sdf' all the way through to input_path.
-        # NOTE: We (currently) have to use the auto-generated input name to reference the call site.
-        dsb__step__1__docking.yml___docking__step__1__flc.yml___flc__step__1__obgen___input_path:
-        #dsb__step__1__obgen___input_path:
-          source: '*ligand.sdf'
-          valueFrom: $(self[inputs.__index__]) # self refers to the array of input values
+        sdf_path: '*ligand.sdf'
       wic:
         # Scattering changes the input/output types and thus creates a barrier to inlineing.
         inlineable: False

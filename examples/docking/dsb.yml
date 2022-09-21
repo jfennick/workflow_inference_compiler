@@ -1,3 +1,9 @@
+inputs:
+  sdf_path:
+    type: File
+    format:
+    - edam:format_3814
+
 steps:
 - docking.yml:
 - stability.yml:
@@ -8,6 +14,9 @@ wic:
   graphviz:
     label: Docking + MD Stability Analysis + Binding Free Energy
   steps:
+    (1, docking.yml):
+      in:
+        sdf_path: ~sdf_path
     (2, stability.yml):
       wic:
         inlineable: False
@@ -47,14 +56,8 @@ wic:
     (3, stability.yml):
       # TODO: Figure out how to make these inlineing-invariant
       in:
-        stability__step__1__setup.yml___setup__step__1__editconf___input_crd_path:
-        #stability__step__1__editconf___input_crd_path:
-          source: '*ligand_GMX.gro'
-          valueFrom: $(self)
-        stability__step__1__setup.yml___setup__step__2__solvate___input_top_zip_path:
-        #stability__step__2__solvate___input_top_zip_path:
-          source: '*ligand_GMX.zip'
-          valueFrom: $(self)
+        crd_path: '*ligand_GMX.gro'
+        top_zip_path: '*ligand_GMX.zip'
       wic:
         inlineable: False
         environment:

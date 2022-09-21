@@ -176,8 +176,8 @@ def get_workflow_outputs(args: argparse.Namespace,
 
         wic_step_i = wic_steps.get(f'({i+1}, {step_key})', {})
         for out_key, out_dict in outputs_workflow[i].items():
+            out_dict['type'] = canonicalize_type(out_dict['type'])
             if 'scatter' in wic_step_i:
-                out_dict['type'] = canonicalize_type(out_dict['type'])
                 # Promote scattered output types to arrays
                 out_dict['type'] = {'type': 'array', 'items': out_dict['type']}
 

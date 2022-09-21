@@ -1,9 +1,15 @@
+inputs:
+  pdbqt_path:
+    type: File
+    format:
+    - edam:format_1476
+
 steps:
-- obabel_convert_mol2:
+- convert_mol2:
     in:
-      input_path: '*ligand.pdbqt'
+      input_path: ~pdbqt_path
+      #input_path: '*ligand.pdbqt'
       output_mol2_path: '&decoy.mol2'
-      arg1: '-xu'
 - python3_mol2_to_mol2:
     in:
       script: /rename_residues_MOL.py # NOTE: Initial / required

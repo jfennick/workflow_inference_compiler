@@ -1,3 +1,9 @@
+inputs:
+  sdf_path:
+    type: File
+    format:
+    - edam:format_3814
+
 steps:
 # Ligand
 # NOTE: Searching for conformers tends to cause the ligand to curl up into a ball.
@@ -89,6 +95,9 @@ wic:
    graphviz:
      label: Cheminformatics + Docking + Initial Topology Setup
    steps:
+     (1, flc.yml):
+       in:
+        sdf_path: ~sdf_path
      (2, python3_mol2_to_mol2):
        wic:
          graphviz:

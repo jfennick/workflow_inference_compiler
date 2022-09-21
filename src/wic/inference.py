@@ -67,11 +67,11 @@ def perform_edge_inference(args: argparse.Namespace,
     in_type = in_tool[arg_key]['type']
     if isinstance(in_type, str):
         in_type = in_type.replace('?', '')  # Providing optional arguments makes them required
+    in_type = utils_cwl.canonicalize_type(in_type)
     in_dict = {'type': in_type}
 
     wic_step_i = wic_steps.get(f'({i+1}, {step_key})', {})
     if arg_key in wic_step_i.get('scatter', []):
-        in_dict['type'] = utils_cwl.canonicalize_type(in_dict['type'])
         # Promote scattered input types to arrays
         in_dict['type'] = {'type': 'array', 'items': in_dict['type']}
 
@@ -110,10 +110,10 @@ def perform_edge_inference(args: argparse.Namespace,
             #    continue
 
             out_type = out_tool[out_key]['type']
+            out_type = utils_cwl.canonicalize_type(out_type)
             out_dict = {'type': out_type}
 
             if 'scatter' in wic_step_j:
-                out_dict['type'] = utils_cwl.canonicalize_type(out_dict['type'])
                 # Promote scattered output types to arrays
                 out_dict['type'] = {'type': 'array', 'items': out_dict['type']}
 
