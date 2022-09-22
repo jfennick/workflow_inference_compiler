@@ -1,37 +1,35 @@
 steps:
+- setup_receptor.yml:
 - extract_molecules_sdf:
     in:
       input_path: ../data/NCIOpen.sdf
-      output_sdf_path: '&ligands.sdf'
+#      output_sdf_path: '&ligands.sdf'
       first_molecule: "1"
       last_molecule: "1"
-- setup_receptor.yml:
 - generate_conformers_sdf:
-    in:
-      input_path:
-        source: '*ligands.sdf'
+#    in:
+#      input_path:
+#        source: '*ligands.sdf'
       # Adds hydrogens, minimizes, searches for the lowest energy conformer,
       # then minimizes again.
-      output_sdf_path: '&ligand_min.sdf'
+#      output_sdf_path: '&ligand_min.sdf'
 - assign_partial_charges.yml:
 # NOTE: split_pdbqt coincidentally also removes keywords.
 - split_pdbqt:
-    in:
-      input_path: '*ligand_keywords.pdbqt'
-      output_pdb_path: '&ligand_split.pdbqt' # Array type
+#    in:
+#      input_path: '*ligand_keywords.pdbqt'
+#      output_pdb_path: '&ligand_split.pdbqt' # Array type
 - autodock_vina_batch:
     in:
-      input_batch_pdbqt_path: '*ligand_split.pdbqt' # Array type
+#      input_batch_pdbqt_path: '*ligand_split.pdbqt' # Array type
       input_receptor_pdbqt_path: '*receptor_hydrogens.pdbqt'
       input_box_path: '*box.pdb'
-      #output_batch_pdbqt_path: '&decoys_ligand.pdbqt' # Array type
+#      output_batch_pdbqt_path: '&decoys_ligand.pdbqt' # Array type
       output_log_path: '&vina.log'
 - split_pdbqt:
-    in:
-      #input_path: '*decoys_ligand.pdbqt' # Scalar type
-      #input_path:
-      #  source: ~autodock_vina_batch/output_batch_pdbqt_path
-      output_pdb_path: '&ligand_nested_split.pdbqt' # 1D Array type, but
+#    in:
+#      input_path: '*decoys_ligand.pdbqt' # Scalar type
+#      output_pdb_path: '&ligand_nested_split.pdbqt' # 1D Array type, but
     #out:
     #  output_pdb_path: # 2D Array type due to scattering
 - autodock_vina_filter:
@@ -40,23 +38,22 @@ steps:
       docking_score_cutoff: -4.0
       max_num_decoys_per_ligand: 1
       max_num_decoys_total: 1
-      input_batch_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
-      #input_batch_pdbqt_path: ~split_pdbqt/output_pdb_path # Not necessary if using explicit edge
-      output_batch_pdbqt_path: '&ligand.pdbqt'
+#      input_batch_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
+#      output_batch_pdbqt_path: '&ligand.pdbqt'
 - ligand_topol_params.yml: # scatter
 - stability.yml: # scatter
 
 wic:
   steps:
-    (1, extract_molecules_sdf):
-      wic:
-        graphviz:
-          label: Choose Ligands from\nCheminformatics Database
-    (2, setup_receptor.yml):
+    (1, setup_receptor.yml):
       in:
         pdb_id: 1ntp
       wic:
         inlineable: False
+    (2, extract_molecules_sdf):
+      wic:
+        graphviz:
+          label: Choose Ligands from\nCheminformatics Database
     (4, assign_partial_charges.yml):
       wic:
         inlineable: False
@@ -74,40 +71,3 @@ wic:
       scatterMethod: dotproduct
       wic:
         inlineable: False
-        graphviz:
-          label: Docking + MD Stability Analysis + Binding Free Energy
-        steps:
-          (1, stability.yml):
-            wic:
-              inlineable: False
-              steps:
-                (1, setup.yml):
-                  wic:
-                    steps:
-                      (4, genion):
-                        in:
-                          output_top_zip_path: '&genion_complex.zip'
-                (2, basic.yml):
-                  wic:
-                    steps:
-                      (3, prod.yml):
-                        wic:
-                          steps:
-                            (1, grompp):
-                              in:
-                                input_top_zip_path: '*genion_complex.zip'
-                            (2, mdrun):
-                              in:
-                                output_crd_path: '&prod_complex.gro'
-                            (3, cwl_watcher_analysis.yml):
-                              wic:
-                                backend: complex
-                (3, analysis.yml):
-                  wic:
-                    steps:
-                      (1, analysis_realtime.yml):
-                        wic:
-                          backend: complex
-                      (2, analysis_final.yml):
-                        wic:
-                          backend: complex

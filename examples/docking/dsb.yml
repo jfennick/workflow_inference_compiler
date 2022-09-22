@@ -7,8 +7,13 @@ inputs:
 steps:
 - docking.yml:
 - stability.yml:
-- stability.yml:
+#- stability.yml: # Temporarily comment out due to demo trickery, specifically analysis_final.yml
 #- yank.yml:
+
+# Fatal error:
+# Index[3214] 3215 is larger than the number of atoms in the
+# trajectory file (3214). There is a mismatch in the contents
+# of your -f, -s and/or -n files.
 
 wic:
   graphviz:

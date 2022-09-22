@@ -5,6 +5,9 @@ inputs:
     - edam:format_1476
 
 steps:
+- config_tag_pdb:
+    in:
+      pdb_id: ~pdb_id
 - pdb:
     in:
       output_pdb_path: protein_models.pdb
@@ -27,7 +30,7 @@ steps:
 
       # Trypsin
       #config: {pdb_code: 1trn} # Dimer. This does not download residue 151, but residue 151 is in the pdb file if you download it using a web browser! ???
-      config: {pdb_code: 1ntp}
+      #config: {pdb_code: 1ntp}
       #config: {pdb_code: 1bty} # "IndexError: list index out of range" in str_check_add_hydrogens
 - extract_model:
     in:

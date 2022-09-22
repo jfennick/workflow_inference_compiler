@@ -3,13 +3,13 @@ steps:
   - extract_molecules_sdf:
       in:
         input_path: ../data/NCIOpen.sdf
-        output_sdf_path: '&ligands.sdf'
+#        output_sdf_path: '&ligands.sdf'
         first_molecule: "1"
         last_molecule: "1"
   - split_sdf:
-      in:
-  #      input_path: '*ligands.sdf'
-        output_sdf_path: '&ligand.sdf' # Array type
+#      in:
+#        input_path: '*ligands.sdf'
+#        output_sdf_path: '&ligand.sdf' # Array type
   - ligand_modeling_docking.yml: # scatter
   - autodock_vina_filter:
       in:
@@ -48,40 +48,3 @@ wic:
       scatterMethod: dotproduct
       wic:
         inlineable: False
-        graphviz:
-          label: Docking + MD Stability Analysis + Binding Free Energy
-        steps:
-          (1, stability.yml):
-            wic:
-              inlineable: False
-              steps:
-                (1, setup.yml):
-                  wic:
-                    steps:
-                      (4, genion):
-                        in:
-                          output_top_zip_path: '&genion_complex.zip'
-                (2, basic.yml):
-                  wic:
-                    steps:
-                      (3, prod.yml):
-                        wic:
-                          steps:
-                            (1, grompp):
-                              in:
-                                input_top_zip_path: '*genion_complex.zip'
-                            (2, mdrun):
-                              in:
-                                output_crd_path: '&prod_complex.gro'
-                            (3, cwl_watcher_analysis.yml):
-                              wic:
-                                backend: complex
-                (3, analysis.yml):
-                  wic:
-                    steps:
-                      (1, analysis_realtime.yml):
-                        wic:
-                          backend: complex
-                      (2, analysis_final.yml):
-                        wic:
-                          backend: complex

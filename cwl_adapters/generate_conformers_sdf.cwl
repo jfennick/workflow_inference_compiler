@@ -58,6 +58,7 @@ inputs:
     type: string
     format:
     - edam:format_3814 # sdf
+    default: system.sdf
 
 outputs:
   output_sdf_path:

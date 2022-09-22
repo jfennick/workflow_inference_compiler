@@ -756,7 +756,10 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
         # not all output files will be generated. This may cause an error.
         out_keyvals = {}
         for out_key, out_dict in tool_i.cwl['outputs'].items():
-            out_keyvals[out_key] = {'type': out_dict['type'], 'format': out_dict['format']}
+            if 'format' in out_dict:
+                out_keyvals[out_key] = {'type': out_dict['type'], 'format': out_dict['format']}
+            else:
+                out_keyvals[out_key] = {'type': out_dict['type']}
             #print(out_key, out_keyvals[out_key])
         if not out_keyvals: # FYI out_keyvals should never be {}
             print(f'Error! no outputs for step {step_key}')
