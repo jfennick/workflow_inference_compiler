@@ -1,5 +1,7 @@
 steps:
   - setup_receptor.yml:
+      in:
+        pdb_id: 1ntp
   - extract_molecules_sdf:
       in:
         input_path: ../data/NCIOpen.sdf
@@ -11,6 +13,7 @@ steps:
 #        input_path: '*ligands.sdf'
 #        output_sdf_path: '&ligand.sdf' # Array type
   - ligand_modeling_docking.yml: # scatter
+      scatter: [sdf_path]
   - autodock_vina_filter:
       in:
         input_log_paths: '*vina.log' # NOTE: plural
@@ -18,33 +21,26 @@ steps:
         max_num_decoys_per_ligand: 1
         max_num_decoys_total: 1
         input_batch_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
-        #input_batch_pdbqt_path: ~split_pdbqt/output_pdb_path # Not necessary if using explicit edge
         output_batch_pdbqt_path: '&ligand.pdbqt'
   - ligand_topol_params.yml: # scatter
+      scatter: [pdbqt_path]
   - stability.yml: # scatter
+      scatter: [crd_path, top_zip_path]
+      scatterMethod: dotproduct
 
 wic:
   graphviz:
     label: Cheminformatics + Docking + Initial Topology Setup
   steps:
     (1, setup_receptor.yml):
-      in:
-        pdb_id: 1ntp
       wic:
         inlineable: False
     (4, ligand_modeling_docking.yml):
       wic:
         inlineable: False
-      scatter: [sdf_path]
     (6, ligand_topol_params.yml):
       wic:
         inlineable: False
-      scatter: [pdbqt_path]
     (7, stability.yml):
-      #in:
-      #  crd_path: '*complex_vac.pdb'
-      #  top_zip_path: '*complex_vac.zip'
-      scatter: [crd_path, top_zip_path]
-      scatterMethod: dotproduct
       wic:
         inlineable: False

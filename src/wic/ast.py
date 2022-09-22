@@ -90,10 +90,10 @@ def read_ast_from_disk(yaml_tree_tuple: YamlTree,
             y_t = YamlTree(StepId(step_key, plugin_ns), sub_yaml_tree_raw)
             (step_id_, sub_yml_tree) = read_ast_from_disk(y_t, yml_paths, tools, validator)
 
-            # inline sub_yml_tree; Since we are using a top-level wic: key,
-            # there shouldn't be any key collisions, but we should check.
             step_i_dict = {} if steps[i][step_key] is None else steps[i][step_key]
-            steps[i][step_key] = {**sub_yml_tree, **step_i_dict}
+            # Do not merge these two dicts; use subtree and parentargs so we can
+            # apply subtree before compilation and parentargs after compilation.
+            steps[i][step_key] = {'subtree': sub_yml_tree, 'parentargs': step_i_dict}
 
     return YamlTree(step_id, yaml_tree)
 
@@ -145,13 +145,13 @@ def merge_yml_trees(yaml_tree_tuple: YamlTree,
         # Recursively merge subworkflows, to implement parameter passing.
         if step_key in subkeys:
             # Extract the sub yaml file that we pre-loaded from disk.
-            sub_yml_tree_initial = steps[i][step_key]
+            sub_yml_tree_initial = steps[i][step_key]['subtree']
             sub_wic = wic_steps.get(f'({i+1}, {step_key})', {})
 
             y_t = YamlTree(StepId(step_key, step_id.plugin_ns), sub_yml_tree_initial)
             (step_key_, sub_yml_tree) = merge_yml_trees(y_t, sub_wic, tools)
             # Now mutably overwrite the self args with the merged args
-            steps[i][step_key] = sub_yml_tree
+            steps[i][step_key]['subtree'] = sub_yml_tree
 
         # Extract provided CWL args, if any, and (recursively) merge them with
         # provided CWL args passed in from the parent, if any.

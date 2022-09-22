@@ -11,14 +11,12 @@ inputs:
 
 steps:
   - setup.yml:
+      in:
+        crd_path: ~crd_path
+        top_zip_path: ~top_zip_path
   - basic.yml:
   - analysis.yml:
 
 wic:
   graphviz:
     label: Molecular Dynamics Stability Analysis
-  steps:
-    (1, setup.yml):
-      in:
-        crd_path: ~crd_path
-        top_zip_path: ~top_zip_path

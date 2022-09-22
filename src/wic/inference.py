@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from . import utils, utils_cwl
-from .wic_types import (KV, GraphReps, InternalOutputs, Namespaces, StepId, Tool, Tools,
+from .wic_types import (GraphReps, InternalOutputs, Namespaces, StepId, Tool, Tools,
                         WorkflowInputs, Yaml)
 
 # NOTE: This must be initialized in main.py and/or cwl_watcher.py
@@ -16,7 +16,7 @@ def perform_edge_inference(args: argparse.Namespace,
                            steps_keys: List[str],
                            yaml_stem: str,
                            i: int,
-                           steps_i: KV,
+                           steps: List[Yaml],
                            arg_key: str,
                            graph: GraphReps,
                            is_root: bool,
@@ -25,9 +25,9 @@ def perform_edge_inference(args: argparse.Namespace,
                            inputs_workflow: WorkflowInputs,
                            in_name_in_inputs_file_workflow: bool,
                            conversions: List[StepId],
-                           wic_steps: Yaml) -> KV:
+                           wic_steps: Yaml) -> Yaml:
     """This function implements the core edge inference feature.
-    NOTE: steps_i, vars_workflow_output_internal, inputs_workflow are mutably updated.
+    NOTE: steps[i], vars_workflow_output_internal, inputs_workflow are mutably updated.
 
     Args:
         args (argparse.Namespace): The command line arguments
@@ -38,7 +38,7 @@ def perform_edge_inference(args: argparse.Namespace,
         i (int): The (zero-based) step number w.r.t. the current subworkflow.\n
         Since we are trying to infer inputs from previous outputs, this will not\n
         perform any inference (again, w.r.t. the current subworkflow) if i == 0.
-        steps_i (KV): The i-th component of the steps: tag of the current CWL workflow
+        steps (List[Yaml]): The steps: tag of the current CWL workflow
         arg_key (str): The name of the CWL input tag that needs a concrete input value inferred
         graph (GraphReps): A tuple of a GraphViz DiGraph and a networkx DiGraph
         is_root (bool): True if this is the root workflow (for debugging only)
@@ -52,7 +52,7 @@ def perform_edge_inference(args: argparse.Namespace,
         wic_steps (Yaml): The metadata associated with the given workflow.
 
     Returns:
-        KV: steps_i with the input tag arg_key updated with an inferred input value.
+        Yaml: steps[i] with the input tag arg_key updated with an inferred input value.
     """
     # Use in_name_in_inputs_file_workflow: bool so that at the call site, we don't
     # have to question whether or not this function modifies inputs_file_workflow
@@ -70,8 +70,7 @@ def perform_edge_inference(args: argparse.Namespace,
     in_type = utils_cwl.canonicalize_type(in_type)
     in_dict = {'type': in_type}
 
-    wic_step_i = wic_steps.get(f'({i+1}, {step_key})', {})
-    if arg_key in wic_step_i.get('scatter', []):
+    if arg_key in steps[i][step_key].get('scatter', []):
         # Promote scattered input types to arrays
         in_dict['type'] = {'type': 'array', 'items': in_dict['type']}
 
@@ -113,7 +112,7 @@ def perform_edge_inference(args: argparse.Namespace,
             out_type = utils_cwl.canonicalize_type(out_type)
             out_dict = {'type': out_type}
 
-            if 'scatter' in wic_step_j:
+            if 'scatter' in steps[j][steps_keys[j]]:
                 # Promote scattered output types to arrays
                 out_dict['type'] = {'type': 'array', 'items': out_dict['type']}
 
@@ -224,7 +223,7 @@ def perform_edge_inference(args: argparse.Namespace,
             #arg_val = {'source': f'{step_name_j}/{out_key}'}
             arg_val = f'{step_name_j}/{out_key}'
             arg_keyval = {arg_key: arg_val}
-            steps_i = utils_cwl.add_yamldict_keyval_in(steps_i, step_key, arg_keyval)
+            steps_i = utils_cwl.add_yamldict_keyval_in(steps[i], step_key, arg_keyval)
             #print(f'inference i {i} y arg_key {arg_key}')
             return steps_i  # Short circuit
 
@@ -302,12 +301,12 @@ def perform_edge_inference(args: argparse.Namespace,
 
         #arg_keyval = {arg_key: {'source': in_name}}
         arg_keyval = {arg_key: in_name}
-        steps_i = utils_cwl.add_yamldict_keyval_in(steps_i, step_key, arg_keyval)
+        steps_i = utils_cwl.add_yamldict_keyval_in(steps[i], step_key, arg_keyval)
         return steps_i
 
     # Add an explicit return statement here so mypy doesn't complain.
     # (mypy's static analysis cannot determine that this is dead code.)
-    return steps_i
+    return steps[i]
 
 
 def get_inference_rules(wic: Yaml, step_key_parent: str) -> Dict[str, str]:

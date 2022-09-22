@@ -6,6 +6,8 @@ inputs:
 
 steps:
   - download_pdb.yml:
+      in:
+         pdb_id: ~pdb_id
   - pdb4amber_run: # NOTE: See comments below w.r.t. pdb2gmx
       in:
         input_pdb_path: '*protein.pdb'
@@ -77,9 +79,6 @@ wic:
    graphviz:
      label: Receptor Modeling + Docking + Initial Topology Setup
    steps:
-     (1, download_pdb.yml):
-       in:
-         pdb_id: ~pdb_id
      (2, pdb4amber_run):
        wic:
          graphviz:

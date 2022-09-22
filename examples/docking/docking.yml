@@ -10,6 +10,8 @@ steps:
 # Although this lowers its energy in isolation, the decreased surface area tends
 # to weaken the binding free energy! (as reported by autodock vina)
   - flc.yml:
+      in:
+        sdf_path: ~sdf_path
 #  - minimize_ligand_only.yml:
 
 # NOTE: We converted to mol2 format above because it allows explicit charges.
@@ -95,9 +97,6 @@ wic:
    graphviz:
      label: Cheminformatics + Docking + Initial Topology Setup
    steps:
-     (1, flc.yml):
-       in:
-        sdf_path: ~sdf_path
      (2, python3_mol2_to_mol2):
        wic:
          graphviz:

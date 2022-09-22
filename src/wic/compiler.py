@@ -163,9 +163,6 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
     yaml_tree['$namespaces'] = {'edam': 'https://edamontology.org/'}
     yaml_tree['$schemas'] = ['https://raw.githubusercontent.com/edamontology/edamontology/master/EDAM_dev.owl']
 
-    # NOTE: currently mutates yaml_tree (maybe)
-    utils_cwl.maybe_add_requirements(yaml_tree, tools, steps_keys, wic_steps, subkeys)
-
     # Collect workflow input parameters
     inputs_workflow = {}
     inputs_file_workflow = {}
@@ -212,10 +209,11 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
         ast_modified = False
         if step_key in subkeys:
             # Extract the sub yaml file that we pre-loaded from disk.
-            sub_yaml_tree = YamlTree(StepId(step_key, plugin_ns_i), steps[i][step_key])
+            sub_yml = steps[i][step_key]['subtree']
+            sub_yaml_tree = YamlTree(StepId(step_key, plugin_ns_i), sub_yml)
 
             # get the label (if any) from the subworkflow
-            step_i_wic_graphviz = sub_yaml_tree.yml.get('wic', {}).get('graphviz', {})
+            step_i_wic_graphviz = sub_yml.get('wic', {}).get('graphviz', {})
             label = step_i_wic_graphviz.get('label', step_key)
             style = step_i_wic_graphviz.get('style', '')
 
@@ -246,7 +244,6 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 explicit_edge_defs_copy.update(merge_keyvals_defs)
                 #explicit_edge_calls_copy.update(merge_keyvals_calls)
 
-            steps[i].update({step_key: {}}) # delete yml subtree
             sub_compiler_info = compile_workflow(sub_yaml_tree, args, namespaces + [step_name_i],
                                                  subgraphs + [subgraph], explicit_edge_defs_copy,
                                                  explicit_edge_calls_copy, tools, False, relative_run_path, testing)
@@ -272,15 +269,8 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 #import yaml
                 #print(yaml.dump(wic_steps))
 
-            # Add arguments to the compiled subworkflow (if any), being careful
-            # to remove any child wic: metadata annotations. (Note that post-
-            # compilation arguments have to be added as metadata. Otherwise, the
-            # arguments will get added to the subworkflow.)
-            # For now, this is only used by the scatter feature.
-            wic_step_i_copy = copy.deepcopy(wic_step_i)
-            if 'wic' in wic_step_i_copy:
-                del wic_step_i_copy['wic']
-            steps[i][step_key] = wic_step_i_copy
+            # Add arguments to the compiled subworkflow (if any).
+            steps[i][step_key] = steps[i][step_key]['parentargs']
 
             sibling_subgraphs.append(sub_node_data.graph) # TODO: Just subgraph?
             step_1_names.append(sub_node_data.step_name_1)
@@ -610,7 +600,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 if isinstance(arg_val, Dict):
                     arg_val_str = arg_val['source']
 
-                if arg_val_str in wic_step_i.get('scatter', []):
+                if arg_val_str in steps[i][step_key].get('scatter', []):
                     # Promote scattered input types to arrays
                     in_dict['type'] = {'type': 'array', 'items': in_dict['type']}
 
@@ -618,7 +608,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 in_dict = {**in_dict, 'value': arg_val}
                 inputs_file_workflow.update({in_name: in_dict})
                 new_val = {'source': in_name}
-                if arg_val_str in wic_step_i.get('scatter', []):
+                if arg_val_str in steps[i][step_key].get('scatter', []):
                     new_val = {**arg_val, **new_val}
                 steps[i][step_key]['in'][arg_key] = new_val
 
@@ -702,7 +692,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 conversions: List[StepId] = []
                 in_name_in_inputs_file_workflow: bool = (in_name in inputs_file_workflow)
                 steps[i] = inference.perform_edge_inference(args, tools, tools_lst, steps_keys,
-                    yaml_stem, i, steps[i], arg_key, graph, is_root, namespaces,
+                    yaml_stem, i, steps, arg_key, graph, is_root, namespaces,
                     vars_workflow_output_internal, inputs_workflow,
                     in_name_in_inputs_file_workflow, conversions, wic_steps)
                 # NOTE: For now, perform_edge_inference mutably appends to
@@ -788,8 +778,11 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
     vars_workflow_output_internal = list(set(vars_workflow_output_internal))  # Get uniques
     # (Why are we getting uniques?)
     workflow_outputs = utils_cwl.get_workflow_outputs(args, namespaces, is_root, yaml_stem,
-        steps, wic_steps, outputs_workflow, vars_workflow_output_internal, graph, tools_lst, step_node_name)
+        steps, outputs_workflow, vars_workflow_output_internal, graph, tools_lst, step_node_name)
     yaml_tree.update({'outputs': workflow_outputs})
+
+    # NOTE: currently mutates yaml_tree (maybe)
+    utils_cwl.maybe_add_requirements(yaml_tree, tools, steps_keys, wic_steps, subkeys)
 
     # Finally, rename the steps to be unique
     # and convert the list of steps into a dict
