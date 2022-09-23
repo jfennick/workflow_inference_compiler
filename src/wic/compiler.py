@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import graphviz
+from mergedeep import merge, Strategy
 import networkx as nx
 import yaml
 
@@ -269,8 +270,16 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 #import yaml
                 #print(yaml.dump(wic_steps))
 
-            # Add arguments to the compiled subworkflow (if any).
-            steps[i][step_key] = steps[i][step_key]['parentargs']
+            # Add arguments to the compiled subworkflow (if any), being careful
+            # to remove any child wic: metadata annotations. Post-compilation
+            # arguments can now be added either directly inline or as metadata.
+            wic_step_i_copy = copy.deepcopy(wic_step_i)
+            if 'wic' in wic_step_i_copy:
+                del wic_step_i_copy['wic']
+            # NOTE: To support overloading, the metadata args must overwrite the parent args!
+            args_provided_dict = merge(steps[i][step_key]['parentargs'], wic_step_i_copy,
+                                    strategy=Strategy.TYPESAFE_REPLACE) # TYPESAFE_ADDITIVE ?
+            steps[i][step_key] = args_provided_dict
 
             sibling_subgraphs.append(sub_node_data.graph) # TODO: Just subgraph?
             step_1_names.append(sub_node_data.step_name_1)
@@ -442,12 +451,12 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
             # Extract input value into separate yml file
             # Replace it here with a new variable name
             arg_val = steps[i][step_key]['in'][arg_key]
-            if isinstance(arg_val, str):
-                arg_val = {'source': arg_val}
             # Convert native YAML to a JSON-encoded string for specific tags.
             tags = ['config']
             if arg_key in tags and isinstance(arg_val, Dict):
-                arg_val = json.dumps(arg_val) # Do NOT wrap in {'source': ...}
+                arg_val = json.dumps(arg_val) # Do NOT wrap config: in {'source': ...}
+            elif isinstance(arg_val, str):
+                arg_val = {'source': arg_val}
             # Use triple underscore for namespacing so we can split later
             in_name = f'{step_name_i}___{arg_key}' # {step_name_i}_input___{arg_key}
 

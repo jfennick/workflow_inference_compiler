@@ -1,26 +1,29 @@
 steps:
 - setup_receptor.yml:
+    in:
+      pdb_id: 1uao #1ntp
 - extract_molecules_sdf:
     in:
       input_path: ../data/NCIOpen.sdf
-      output_sdf_path: '&ligands.sdf'
+#      output_sdf_path: '&ligands.sdf'
       first_molecule: "1"
-      last_molecule: "2"
+      last_molecule: "1"
 # NOTE: We need to extract the models first, before splitting them into separate files.
 # If we try to do both simultaneously, obabel ignores -f and -l and outputs ALL models.
 - split_sdf:
-    in:
-      input_path: '*ligands.sdf'
-      output_sdf_path: '&ligand.sdf' # Array type
+#    in:
+#      input_path: '*ligands.sdf'
+#      output_sdf_path: '&ligand.sdf' # Array type
 - dsb.yml:
+    scatter: [sdf_path]
+#    in:
+#      sdf_path: '*ligand.sdf'
 # NOTE: Do not add scattering arguments here, add them to the wic: metadata annotations.
 # (We want this information at the call site, not inserted within the subworkflow.)
 
 wic:
   steps:
     (1, setup_receptor.yml):
-      in:
-        pdb_id: 1ntp
       wic:
         inlineable: False # Due to yml wic tag inlineing issue
     (2, extract_molecules_sdf):
@@ -32,12 +35,6 @@ wic:
         graphviz:
           label: Split Ligands into\nSeparate Files
     (4, dsb.yml):
-      scatter: [sdf_path]
-      in:
-        # Note that since we want to scatter over the entire subworkflow, we do
-        # not want to go any deeper into the syntax tree / call stack, i.e. we
-        # do not want to pass '*ligand.sdf' all the way through to input_path.
-        sdf_path: '*ligand.sdf'
       wic:
         # Scattering changes the input/output types and thus creates a barrier to inlineing.
         inlineable: False

@@ -8,9 +8,11 @@ steps:
 - config_tag_pdb:
     in:
       pdb_id: ~pdb_id
+      output_config_string: '&pdb_id_str'
 - pdb:
     in:
       output_pdb_path: protein_models.pdb
+      config: '*pdb_id_str'
       #config: {pdb_code: 1aki} # from tutorial
       #config: {pdb_code: 1enh} # "Structural Studies of the Engrailed Homeodomain" https://pubs.acs.org/doi/10.1021/acs.jpcb.8b02144
 
