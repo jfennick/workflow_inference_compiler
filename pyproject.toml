@@ -1,7 +1,6 @@
 # Based on https://packaging.python.org/en/latest/tutorials/packaging-projects/
 [build-system]
-requires = ["cython", "jupyter_packaging~=0.7.9", "setuptools>=42", "wheel", "versioneer-518"]
+requires = ["jupyter_packaging~=0.7.9", "setuptools>=42", "wheel", "versioneer-518"]
 # NOTE: The above list mostly comes from https://github.com/nglviewer/nglview/pull/969/files
-# The exception is cython which is a build dependency of mdtraj.
 
 build-backend = "setuptools.build_meta"
