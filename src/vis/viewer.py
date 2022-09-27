@@ -10,12 +10,12 @@ from . import filewatcher
 
 
 def main(num_iterations: int, cachedir_path: str = 'cachedir', file_patterns: List[str] = ['*.trr', '*.pdb']) -> None:
-    """This function 
+    """This function watches cachedir_path for file_patterns and updates an NGLWidget, upto num_iterations times.
 
     Args:
         num_iterations (int): The number of iterations, to guarantee termination.
         cachedir_path (str, optional): The cwltool --cachedir directory. Defaults to 'cachedir'.
-        file_patterns (List[str], optional): The file patterns for coordinate and topology files. Defaults to ['*.trr', '*.pdb'].
+        file_patterns (List[str], optional): The coordinate and topology file patterns. Defaults to ['*.trr', '*.pdb'].
     """
 
     prev_files: Dict[str, float] = {}
