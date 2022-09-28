@@ -22,7 +22,7 @@ def main(num_iterations: int, cachedir_path: str = 'cachedir', file_patterns: Li
     coords_file = ''
     top_file = ''
     nglwidget = nv.NGLWidget()
-    nglwidget._set_size('100%', '800px')
+    nglwidget._set_size('100%', '800px') # pylint: disable=protected-access
     display(nglwidget)
     for t in range(num_iterations):
         try:
