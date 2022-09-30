@@ -780,7 +780,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
     utils.add_subgraphs(args, graph, sibling_subgraphs, namespaces, step_1_names, steps_ranksame)
     step_name_1 = utils.get_step_name_1(step_1_names, yaml_stem, namespaces, steps_keys, subkeys)
 
-    # Add the provided inputs of each step to the workflow inputs
+    # Add the provided workflow inputs to the workflow inputs from each step
     inputs_combined = {**yaml_tree.get('inputs', {}), **inputs_workflow}
     yaml_tree.update({'inputs': inputs_combined})
 
@@ -788,7 +788,9 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
     # (Why are we getting uniques?)
     workflow_outputs = utils_cwl.get_workflow_outputs(args, namespaces, is_root, yaml_stem,
         steps, outputs_workflow, vars_workflow_output_internal, graph, tools_lst, step_node_name)
-    yaml_tree.update({'outputs': workflow_outputs})
+    # Add the provided workflow outputs to the workflow outputs from each step
+    outputs_combined = {**yaml_tree.get('outputs', {}), **workflow_outputs}
+    yaml_tree.update({'outputs': outputs_combined})
 
     # NOTE: currently mutates yaml_tree (maybe)
     utils_cwl.maybe_add_requirements(yaml_tree, tools, steps_keys, wic_steps, subkeys)
