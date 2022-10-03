@@ -4,6 +4,8 @@ steps:
         pdb_id: 1ntp
         pdb_path: '&pdb.pdbqt'
         box_path: '&box.pdb'
+        water_type: spce
+        force_field: amber99sb-ildn
   - download_ligand_database:
       in:
         database: /NCIOpen.sdf
