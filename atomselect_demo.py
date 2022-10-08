@@ -1,6 +1,5 @@
-import mdtraj
-
 def main(selection_string, input_pdb_path, output_pdb_path):
+    import mdtraj
     traj = mdtraj.load(input_pdb_path)
     print(traj)
     selection_indices = traj.topology.select(selection_string)
@@ -10,6 +9,7 @@ def main(selection_string, input_pdb_path, output_pdb_path):
 
 
 from workflow_types import *
+# NOTE: No other top-level imports supported
 
 inputs = {'selection_string': string,
           'input_pdb_path': pdbfile,
