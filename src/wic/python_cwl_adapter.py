@@ -9,7 +9,7 @@ driver_script =  '/python_cwl_driver.py'
 types_script = '/workflow_types.py'
 
 types_script_rel = 'examples/scripts/workflow_types.py'
-types_script_rel = str(Path(__file__).parent) + '/../../examples/scripts/workflow_types.py'
+#types_script_rel = str(Path(__file__).parent) + '/../../examples/scripts/workflow_types.py'
 
 
 def import_python_file(python_module_name: str, python_file_path: Path) -> ModuleType:
