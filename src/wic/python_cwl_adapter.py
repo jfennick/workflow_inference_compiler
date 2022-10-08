@@ -68,11 +68,11 @@ def get_main_args(module_: ModuleType) -> Dict[str, Any]:
     ret = {'return': anns.get('return')} # Separate out the return type
     if 'return' in anns:
         del anns['return']
-    print(anns)
-    print(ret)
+    #print(anns)
+    #print(ret)
 
-    print(inspect.signature(module_.main).parameters)
-    print(inspect.signature(module_.main).return_annotation)
+    #print(inspect.signature(module_.main).parameters)
+    #print(inspect.signature(module_.main).return_annotation)
     return anns
 
 
