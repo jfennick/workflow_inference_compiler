@@ -1,15 +1,8 @@
-# pylint: disable=no-member
+# pylint: disable=import-outside-toplevel,no-member
 # type: ignore
 import distutils.util
 import math
 from typing import List
-
-import pandas
-
-import rdkit
-from rdkit import Chem
-from rdkit.Chem import AllChem
-
 
 def calculate_dG(Kd):
     # Calculate the binding free energy from Kd so we can make the correlation plots.
@@ -32,6 +25,11 @@ def calculate_dG(Kd):
 
 def main(input_excel_path, query, min_row, max_row, smiles_column,
          binding_data_column, convert_Kd_dG, output_txt_path):
+    import pandas
+    import rdkit
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
     df = pandas.read_excel(input_excel_path, sheet_name=1) # Requires openpyxl
 
     print(df.shape)
