@@ -502,14 +502,6 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
             if 'format' in in_tool[arg_key]:
                 in_format = in_tool[arg_key]['format']
                 in_dict['format'] = in_format
-            # if demo...
-            #print('step_key', step_key)
-            #print('arg_key', arg_key)
-            #print('arg_val', arg_val)
-            if 'setup_pdb.yml' == step_key and arg_key in ['pdb_path', 'box_path']:
-                arg_val['source'] = arg_val['source'][1:] # Remove &
-            if 'download_smiles_ligand_db.yml' == step_key and arg_key in ['output_txt_path']:
-                arg_val['source'] = arg_val['source'][1:] # Remove &
 
             if isinstance(arg_val, Dict) and arg_val['source'][0] == '~':
                 # NOTE: This is somewhat of a hack; it is useful for when
@@ -671,22 +663,6 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                     graphdata.edges.append((input_node_name, step_node_name, {}))
 
         for arg_key in args_required:
-            # if demo...
-            if 'gen_topol_params.yml' == step_key and 'pdbqt_path' in steps[i][step_key].get('scatter', []):
-                steps[i][step_key]['scatter'] = ['gen_topol_params__step__1__convert_mol2___input_path']
-            # if 'stability.yml' == step_key and ['crd_path', 'top_zip_path'] == steps[i][step_key].get('scatter', []):
-            #     steps[i][step_key]['scatter'] = ['stability__step__1__setup.yml___setup__step__1__editconf___input_crd_path',
-            #                                      'stability__step__1__setup.yml___setup__step__2__solvate___input_top_zip_path']
-            if 'stability.yml' == step_key and ['crd_path', 'top_zip_path'] == steps[i][step_key].get('scatter', []):
-                steps[i][step_key]['scatter'] = ['stability__step__1__setup.yml___setup__step__1__gmx_editconf___input_crd_path',
-                                                 'stability__step__1__setup.yml___setup__step__2__solvate___input_top_zip_path']
-            if 'assign_partial_charges.yml' == step_key and 'input_path' in steps[i][step_key].get('scatter', []):
-                steps[i][step_key]['scatter'] = ['assign_partial_charges__step__1__convert_mol2___input_path']
-            if 'autodock_vina_rescore.yml' == step_key and 'input_pdb_path' in steps[i][step_key].get('scatter', []):
-                steps[i][step_key]['scatter'] = ['autodock_vina_rescore__step__1__python_script___input_pdb_path',
-                                                 'autodock_vina_rescore__step__4__python_script___input_pdb_path']
-                steps[i][step_key]['scatterMethod'] = 'dotproduct'
-
             #print('arg_key', arg_key)
             in_name = f'{step_name_i}___{arg_key}'
             if arg_key in args_provided:

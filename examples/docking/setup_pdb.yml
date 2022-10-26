@@ -56,9 +56,8 @@ steps:
       in: # charges = True outputs in pdbqt format; mode = auto, list, ph (must use ph mode to set ph!)
         input_structure_path: '*receptor_pdb4amber.pdb'
         config: '{"charges": "True", "mode": "auto", "ph": "7.4", "list": "", "keep_canonical_resnames": "False"}'
-        # if demo...
-        output_structure_path: '&pdb.pdbqt'
-        #output_structure_path: ~pdb_path
+        #output_structure_path: '&pdb.pdbqt'
+        output_structure_path: ~pdb_path
   - convert_pdbqt:
       in:
         input_path: '*receptor_pdb4amber.pdb'
@@ -77,9 +76,8 @@ steps:
   - box:
       in:
         input_pdb_path: '*receptor_pdb4amber.pdb' # pdb, not pdbqt
-        # if demo...
-        output_pdb_path: '&box.pdb'
-        #output_pdb_path: ~box_path
+        #output_pdb_path: '&box.pdb'
+        output_pdb_path: ~box_path
         config: '*config_tag_box'
         #config: '{"offset": "20"}' # Default of 2 Angstroms can cause autodock to not find any solutions.
 
