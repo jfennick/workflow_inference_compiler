@@ -575,6 +575,8 @@ def make_tool_dag(tool_stem: str, tool: Tool, graph_dark_theme: bool) -> None:
         output_no_initial_ns = output_cwl.replace(f'{output_initial_ns}__', '')
         graph.node(f'output_{output_cwl}', label=output_no_initial_ns, fillcolor='lightyellow', **attrs)
         graph.edge(tool_stem, f'output_{output_cwl}', color=font_edge_color)
+    # NOTE: Since there may be many inputs/outputs and thus edges in complex subworkflows,
+    # the layout algorithm for this this .render() call may be very slow! (10+ seconds)
     graph.render(format='png')
 
 
@@ -606,6 +608,8 @@ def make_plugins_dag(tools: Tools, graph_dark_theme: bool) -> None:
             (tool_path, tool_cwl) = tools[tool]
             attrs = {'shape':'box', 'style':'rounded, filled'}
             graph.node(Path(tool_path).stem, fillcolor='lightblue', fontsize="24", width='0.75', **attrs)
+        # NOTE: Since there are no edges in this DAG and thus no edge constraints,
+        # the layout algorithm for this .render() call is fast. (about 1 second)
         graph.render(format='png')
 
 
