@@ -3,7 +3,7 @@ import copy
 import json
 from pathlib import Path
 import subprocess as sub
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import graphviz
 import yaml
@@ -111,13 +111,13 @@ def shorten_namespaced_output_name(namespaced_output_name: str, sep: str = ' ') 
     return (yaml_stem_init, shortened)
 
 
-def restore_namespaced_output_name(yaml_stem_init: str, shortened_output_name: str, sep: str = None) -> str:
+def restore_namespaced_output_name(yaml_stem_init: str, shortened_output_name: str, sep: Optional[str] = None) -> str:
     """The inverse function to shorten_namespaced_output_name()
 
     Args:
         yaml_stem_init (str): The initial yaml_stem prefix
         shortened_output_name (str): The shortened namespaced_output_name
-        sep (str, optional): The separator used for shortening. Defaults to None.
+        sep (Optional[str], optional): The separator used for shortening. Defaults to None.
 
     Raises:
         Exception: If the argument is not of the same form as returned by shorten_namespaced_output_name
