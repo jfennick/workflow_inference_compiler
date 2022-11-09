@@ -1,0 +1,26 @@
+
+  steps:
+    # Create new protein-ligand complex structure file
+    - gmx_trjconv_str: # Convert gro (with hydrogens) to pdb (PROTEIN)
+        in:
+          input_crd_path: '*protein_pdb2gmx.gro'
+          input_top_path: '*protein_pdb2gmx.gro'
+          output_str_path: '&protein_complex_H.pdb'
+          config: {"selection" : "System"}
+    - gmx_trjconv_str: # Convert gro (with hydrogens) to pdb (PROTEIN)
+        in:
+          input_crd_path: '*ligand_params.gro'
+          input_top_path: '*ligand_params.gro'
+          output_str_path: '&ligand_complex_H.pdb'
+          config: {"selection" : "System"}
+    - cat_pdb:
+        in:
+          input_structure1: '*protein_complex_H.pdb'
+          input_structure2: '*ligand_complex_H.pdb'
+          output_structure_path: '&complex_vac.pdb'
+    - append_ligand:
+        in:
+          input_top_zip_path: '*protein_pdb2gmx_top.zip'
+          input_posres_itp_path: '*ligand_posres.itp'
+          input_itp_path: '*ligand_params.itp'
+          output_top_zip_path: '&complex_vac.zip'

@@ -1,0 +1,60 @@
+# NOTE: We're not using the results of the structure_check steps,
+# and they're cluttering up the DAG, so comment out for now.
+steps:
+# Fix protein structure
+# - structure_check:
+#     in:
+#       input_structure_path: "*protein.pdb"
+#       output_summary_path: structure_check_protein.json
+# Requires modeller license
+#- fix_backbone:
+#    in:
+#      output_pdb_path: protein_fix_backbone.pdb
+#- structure_check:
+#    in:
+#      output_summary_path: structure_check_protein_fix_backbone.json
+- fix_amides:
+    in:
+      input_pdb_path: "*protein.pdb"
+      output_pdb_path: protein_fix_amides.pdb
+# - structure_check:
+#     in:
+#       output_summary_path: structure_check_protein_fix_amides.json
+- fix_side_chain:
+    in:
+      output_pdb_path: protein_fix_side_chain.pdb
+# - structure_check:
+#     in:
+#       output_summary_path: structure_check_protein_fix_side_chain.json
+- pdb2gmx:
+    in:
+      output_crd_path: '&protein_pdb2gmx.gro'
+      output_top_zip_path: '&protein_pdb2gmx_top.zip'
+      config: 
+        water_type: spce
+        force_field: amber99sb-ildn
+        ignh: True
+        merge: False
+wic:
+  graphviz:
+    label: Molecular\nModeling
+#    ranksame:
+#    - (1, download_pdb.yml)
+#    - (9, pdb2gmx)
+  steps:
+    (1, fix_amides):
+      wic:
+        graphviz:
+          label: 'Fix Amides'
+    # (2, structure_check):
+    #   wic:
+    #     graphviz:
+    #       label: 'Structure\nCheck'
+    (2, fix_side_chain):
+      wic:
+        graphviz:
+          label: 'Fix Side Chains'
+    (3, pdb2gmx):
+      wic:
+        graphviz:
+          label: 'Generate\nInitial\nTopology'
