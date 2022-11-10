@@ -24,6 +24,9 @@ steps:
       output_txt_path: '&binding_data.txt'
 - assign_partial_charges.yml:
     scatter: [input_path]
+# NOTE: cwltool uses the CLI args to determine cacheing. In batch mode, the
+# ligands are passed (as CLI args) to vina all at once. Thus, if you want to
+# incrementally increase the number of ligands, the previous results will NOT be cached!
 - autodock_vina_batch:
     in:
       input_receptor_pdbqt_path: '*pdb.pdbqt'
