@@ -1,0 +1,168 @@
+# pylint: disable=import-outside-toplevel,no-member
+# type: ignore
+import os.path as osp
+import re
+import subprocess
+import argparse
+import pandas as pd
+import math
+from typing import List
+import pandas as pd
+from collections import defaultdict
+
+
+def parse_arguments() -> argparse.Namespace:
+    """ This function parses the arguments.
+
+    Returns:
+        argparse.Namespace: The command line arguments
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--index_file_name', required=True)
+    parser.add_argument('--base_dir', required=True)
+    parser.add_argument('--query', required=False, default=False)
+    parser.add_argument('--output_txt_path', required=True)
+    parser.add_argument('--output_pdb_paths', required=False, default="")
+    parser.add_argument('--output_sdf_paths', required=False, default="")
+    parser.add_argument('--min_row', required=False, default=1)
+    parser.add_argument('--max_row', required=False, default=-1)
+    parser.add_argument('--convert_Kd_dG', required=False, default="False")
+
+    args = parser.parse_args()
+    return args
+
+def calculate_dG(Kd: float) -> float:
+    """_summary_
+
+    Args:
+        Kd (float): _description_
+
+    Returns:
+        float: _description_
+    """
+    # Calculate the binding free energy from Kd so we can make the correlation plots.
+    # See https://en.wikipedia.org/wiki/Binding_constant
+    ideal_gas_constant = 8.31446261815324 # J/(Mol*K)
+    kcal_per_joule = 4184
+    # NOTE: Unfortunately, the temperature at which experimental Kd binding data was taken
+    # is often not recorded. Thus, we are forced to guess. The two standard guesses are
+    # physiological body temperature (310K) or room temperature (298K).
+    temperature = 298
+    RT = (ideal_gas_constant / kcal_per_joule) * temperature
+    # NOTE: For performance, simulations are often done in a very small unit cell, and
+    # thus at a very high concentration. The size of the unit cell bounds the volume.
+    # For shorter simulations where the ligand has not explored the entire box, it may
+    # be less. See the Yank paper for a method of calculating the correct volumes.
+    standard_concentration = 1 # Units of mol / L, but see comment above.
+    dG = RT * math.log(Kd / standard_concentration)
+    return dG
+
+#def conv_ki_kd(ki):
+def read_index_file(index_file_path: str) -> pd.DataFrame:
+    """_summary_
+
+    Args:
+        index_file_path (str): _description_
+
+    Returns:
+        pd.DataFrame: _description_
+    """
+    data = defaultdict(list)
+    # The file format
+    # PDB code, resolution, release year, -logKd/Ki, Kd/Ki, reference, ligand name
+    unit_conv = {'uM': 1,
+                 'mM': 1000.0,
+                 'nM': 0.001,
+                 'pM': 0.000001}
+
+    number_re = '[-+]?(?:\d*\.\d+|\d+)'
+    with open(index_file_path, mode='r', encoding='utf-8') as rfile:
+        lines = [line for line in rfile.readlines() if line[0] != '#' and 'Kd=' in line]
+        for line in lines:
+            words = line.split()
+            #print(words)
+            data['PDB_code'].append(words[0])
+            data['resolution'].append(words[1])
+            data['release_year'].append(words[2])
+
+            # Kd unit conversion to micro molar
+            unit = re.split(r"=[-+]?(?:\d*\.\d+|\d+)", words[4])[1]
+            kd = float(re.findall(r"[-+]?(?:\d*\.\d+|\d+)",words[4])[0])
+            data['Kd'].append(kd * unit_conv[unit])
+            data['ligand_name'].append(re.findall(r'\((.*?)\)', words[7])[0])
+    return pd.DataFrame.from_dict(data)
+
+
+def load_data(index_file_name, base_dir, query, output_txt_path,
+         output_pdb_paths, output_sdf_paths, min_row=0, max_row=-1, convert_Kd_dG=True) -> None:
+    """_summary_
+
+    Args:
+        index_file_name (_type_): _description_
+        base_dir (_type_): _description_
+        query (_type_): _description_
+        output_txt_path (_type_): _description_
+        output_pdb_paths (_type_): _description_
+        output_sdf_paths (_type_): _description_
+        min_row (int, optional): _description_. Defaults to 1.
+        max_row (int, optional): _description_. Defaults to -1.
+        convert_Kd_dG (bool, optional): _description_. Defaults to True.
+    """
+
+    index_file_path = osp.join(base_dir, 'index', index_file_name)
+    df = read_index_file(index_file_path)
+    print(df.shape)
+    print(df.columns)
+    # perform query
+    df = df.query(query)
+
+    # Perform row slicing (if any)
+    if int(min_row) != 1 or int(max_row) != -1:
+        # We want to convert to zero-based indices and we also want
+        # the upper index to be inclusive (i.e. <=) so -1 lower index.
+        df = df[(int(min_row) - 1):int(max_row)]
+        print(df)
+
+    # Calculate dG
+    convert_Kd_dG = eval(convert_Kd_dG)
+    if convert_Kd_dG:
+        dG_data = []
+        microMolar = 0.000001 # uM
+        for _, row in df.iterrows():
+            binding_datum = row['Kd'] * microMolar
+            dG_data.append(calculate_dG(binding_datum))
+        df.insert(4, 'dG', dG_data)
+
+    with open(output_txt_path, mode='w', encoding='utf-8') as f:
+        dfAsString = df.to_string(header=False, index=False)
+        f.write(dfAsString)
+
+
+    # copy pdb and sdf files
+    for _, row in df.iterrows():
+        source_pdb_path = osp.join(base_dir,
+                                   row['PDB_code'],
+                                   f'{row["PDB_code"]}_protein.pdb')
+        dist_pdb_path = f'{row["PDB_code"]}_protein.pdb'
+        subprocess.run(["cp", f"{source_pdb_path}", f"{dist_pdb_path}"])
+        source_sdf_path = osp.join(base_dir,
+                                    row['PDB_code'],
+                                   f'{row["PDB_code"]}_ligand.sdf')
+
+        dist_sdf_path = f'{row["PDB_code"]}_ligand.sdf'
+        subprocess.run(["cp", f"{source_sdf_path}", f"{dist_sdf_path}"])
+
+
+def main() -> None:
+    """ Reads the command line arguments and reads the PDBbind data
+    """
+    args = parse_arguments()
+    load_data(args.index_file_name, args.base_dir, args.query, args.output_txt_path,
+              args.output_pdb_paths, args.output_sdf_paths,
+              min_row=int(args.min_row), max_row=int(args.max_row),
+              convert_Kd_dG=args.convert_Kd_dG)
+
+
+
+if __name__ == '__main__':
+    main()

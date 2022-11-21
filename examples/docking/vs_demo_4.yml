@@ -1,0 +1,89 @@
+steps:
+- download_pdbbind_refined:
+    in:
+      query: "Kd > 100" # should be in units of micro molar
+      max_row: 10 #25 # Use 1 for CI
+      convert_Kd_dG: 'True'
+      output_txt_path: '&binding_data.txt'
+      output_pdb_paths: '&pdbbind_pdbs'
+      output_sdf_paths: '&pdbbind_sdfs'
+- assign_partial_charges.yml:
+    scatter: [assign_partial_charges__step__1__convert_mol2___input_path] #[input_path]
+- autodock_vina_rescore.yml:
+    scatter: [autodock_vina_rescore__step__1__python_script___input_pdb_path,
+              autodock_vina_rescore__step__4__python_script___input_pdb_path] #[input_pdb_path]
+    scatterMethod: dotproduct
+- split_pdbqt:
+    scatter: [input_path]
+- autodock_vina_filter:
+    in:
+      input_log_path: '*vina.log'
+      input_txt_path: '*binding_data.txt'
+      docking_score_cutoff: -1.0
+      max_num_poses_per_ligand: 1
+      max_num_poses_total: 1 #25 # Use 1 for CI
+      #input_batch_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
+      #output_batch_pdbqt_path: '&ligand.pdbqt'
+      docking_scores: '&docking_scores' # NOTE: Not a filename, just an explicit edge
+      experimental_dGs: '&dGs' # NOTE: Not a filename, just an explicit edge
+- gen_topol_params.yml:
+    scatter: [gen_topol_params__step__1__convert_mol2___input_path] #[pdbqt_path]
+- stability.yml:
+    scatter: [stability__step__1__setup.yml___setup__step__1__gmx_editconf___input_crd_path,
+              stability__step__1__setup.yml___setup__step__2__solvate___input_top_zip_path] #[crd_path, top_zip_path]
+    scatterMethod: dotproduct
+    in:
+      nsteps: 10000
+      dt: 0.002
+      temperature: 298.0
+      pressure: 1.0
+- autodock_vina_rescore.yml:
+    scatter: [autodock_vina_rescore__step__1__python_script___input_pdb_path,
+              autodock_vina_rescore__step__4__python_script___input_pdb_path] #[input_pdb_path]
+    scatterMethod: dotproduct
+- scatter_plot:
+    in:
+      xs: '*dGs'
+      ys: '*docking_scores'
+      ys2: '*docking_rescores'
+
+# wic:
+#   graphviz:
+#     label: Virtual Screening Demo
+#   steps:
+#     (1, setup_pdb.yml):
+#       wic:
+#         inlineable: False
+#         graphviz:
+#           label: Setup PDB
+#     (2, download_smiles_ligand_db.yml):
+#       wic:
+#         inlineable: False
+#     (3, assign_partial_charges.yml):
+#       wic:
+#         inlineable: False
+#     (4, autodock_vina_batch):
+#       wic:
+#         graphviz:
+#           label: Docking
+#     (5, split_pdbqt):
+#       wic:
+#         graphviz:
+#           label: Extract Docking\nPoses
+#     (6, autodock_vina_filter):
+#       wic:
+#         graphviz:
+#           label: Apply Docking\nScore Cutoff
+#     (7, gen_topol_params.yml):
+#       wic:
+#         inlineable: False
+#     (8, stability.yml):
+#       wic:
+#         inlineable: False
+#     (9, autodock_vina_rescore.yml):
+#       wic:
+#         inlineable: False
+#     (10, scatter_plot):
+#       wic:
+#         graphviz:
+#           label: Plot Experimental\nvs Predicted Binding
