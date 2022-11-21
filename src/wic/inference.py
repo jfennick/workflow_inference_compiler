@@ -230,16 +230,26 @@ def perform_edge_inference(args: argparse.Namespace,
 
             out_key = utils.get_output_mapping(output_mapping, out_key)
 
+            nss_embedded1 = out_key.split('___')[:-1]
+
+            # NOTE: This if statement is unmotivated and probably masking some other bug, but it works.
+            if out_key.startswith('___'.join(namespaces + [step_name_j])):
+                nss1 = nss_embedded1
+            elif out_key.startswith(step_name_j):
+                nss1 = namespaces + nss_embedded1
+            else:
+                nss1 = namespaces + [step_name_j] + nss_embedded1
+
             for arg_key_ in arg_keys:
                 # Determine which head and tail node to use for the new edge
                 # First we need to extract the embedded namespaces
-                nss_embedded1 = out_key.split('___')[:-1]
                 nss_embedded2 = arg_key_.split('___')[:-1]
 
-                nss1 = namespaces + [step_name_j] + nss_embedded1
                 # NOTE: This if statement is unmotivated and probably masking some other bug, but it works.
                 if arg_key_.startswith('___'.join(namespaces + [step_name_i])):
                     nss2 = nss_embedded2
+                elif arg_key_.startswith(step_name_i):
+                    nss2 = namespaces + nss_embedded2
                 else:
                     nss2 = namespaces + [step_name_i] + nss_embedded2
 

@@ -60,7 +60,7 @@ wic:
   steps:
     (1, setup_pdb.yml):
       wic:
-        inlineable: False
+        inlineable: False # Due to yml wic tag inlineing issue and ~pdb_id
         graphviz:
           label: Setup PDB
     (2, download_smiles_ligand_db.yml):
@@ -68,7 +68,7 @@ wic:
         inlineable: False
     (3, ligand_modeling_docking.yml):
       wic:
-        inlineable: False
+        inlineable: False # Due to yml wic tag inlineing issue and ~sdf_path
     (4, autodock_vina_filter):
       wic:
         graphviz:
@@ -78,7 +78,7 @@ wic:
         inlineable: False
     (6, stability.yml):
       wic:
-        inlineable: False
+        inlineable: False # Due to yml wic tag inlineing issue and ~ inputs
         steps:
           (1, setup.yml):
             wic:

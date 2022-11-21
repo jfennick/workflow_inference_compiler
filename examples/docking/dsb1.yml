@@ -17,3 +17,9 @@ steps:
       first_molecule: 1
       last_molecule: 1
 - dsb.yml:
+
+wic:
+  steps:
+    (1, setup_pdb.yml):
+      wic:
+        inlineable: False # Due to yml wic tag inlineing issue and ~pdb_id

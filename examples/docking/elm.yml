@@ -34,7 +34,7 @@ wic:
   steps:
     (1, setup_pdb.yml):
       wic:
-        inlineable: False # Due to yml wic tag inlineing issue
+        inlineable: False # Due to yml wic tag inlineing issue and ~pdb_id
     (3, extract_molecules_sdf):
       wic:
         graphviz:

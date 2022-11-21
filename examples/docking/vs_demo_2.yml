@@ -67,7 +67,7 @@ wic:
   steps:
     (1, setup_pdb.yml):
       wic:
-        inlineable: False
+        inlineable: False # Due to yml wic tag inlineing issue and ~pdb_id
         graphviz:
           label: Setup PDB
     (2, download_smiles_ligand_db.yml):
@@ -93,7 +93,7 @@ wic:
         inlineable: False
     (8, stability.yml):
       wic:
-        inlineable: False
+        inlineable: False # Due to yml wic tag inlineing issue and ~ inputs
         steps:
           (1, setup.yml):
             wic:

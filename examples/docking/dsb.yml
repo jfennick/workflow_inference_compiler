@@ -28,7 +28,7 @@ wic:
   steps:
     (2, stability.yml):
       wic:
-        inlineable: False
+        inlineable: False # Due to yml wic tag inlineing issue and ~ inputs
         environment:
           action: checkpoint
         steps:
@@ -68,7 +68,7 @@ wic:
         crd_path: '*ligand_GMX.gro'
         top_zip_path: '*ligand_GMX.zip'
       wic:
-        inlineable: False
+        inlineable: False # Due to yml wic tag inlineing issue and ~ inputs
         environment:
           action: restore
           save_defs: ['genion_complex.zip', 'prod_complex.gro']
