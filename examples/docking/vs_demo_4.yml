@@ -19,7 +19,7 @@ steps:
       output_pdb_path: '&ligand_prod.pdbqt'
     scatter: [input_path]
 
-# remove waters the assiagn partial charges to the protein
+# remove waters, then assigns partial charges to the protein
 - pdb4amber_run:
     in:
       input_pdb_path: '*pdbbind_pdbs'
