@@ -1,51 +1,61 @@
 steps:
 - download_pdbbind_refined:
     in:
-      query: "Kd > 100" # should be in units of micro molar
-      max_row: 10 #25 # Use 1 for CI
+      query: "Kd > 1000" # should be in units of micro molar
+      max_row: 3 #25 # Use 1 for CI
       convert_Kd_dG: 'True'
       output_txt_path: '&binding_data.txt'
       output_pdb_paths: '&pdbbind_pdbs'
       output_sdf_paths: '&pdbbind_sdfs'
-- assign_partial_charges.yml:
-    scatter: [assign_partial_charges__step__1__convert_mol2___input_path] #[input_path]
-- autodock_vina_rescore.yml:
-    scatter: [autodock_vina_rescore__step__1__python_script___input_pdb_path,
-              autodock_vina_rescore__step__4__python_script___input_pdb_path] #[input_pdb_path]
-    scatterMethod: dotproduct
-- split_pdbqt:
+      experimental_dGs: '&exp_dGs'
+
+#Assign partial charges (ligand)
+- convert_mol2:
+    in:
+      input_path: '*pdbbind_sdfs'
     scatter: [input_path]
-- autodock_vina_filter:
+- convert_pdbqt:
     in:
-      input_log_path: '*vina.log'
-      input_txt_path: '*binding_data.txt'
-      docking_score_cutoff: -1.0
-      max_num_poses_per_ligand: 1
-      max_num_poses_total: 1 #25 # Use 1 for CI
-      #input_batch_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
-      #output_batch_pdbqt_path: '&ligand.pdbqt'
-      docking_scores: '&docking_scores' # NOTE: Not a filename, just an explicit edge
-      experimental_dGs: '&dGs' # NOTE: Not a filename, just an explicit edge
-- gen_topol_params.yml:
-    scatter: [gen_topol_params__step__1__convert_mol2___input_path] #[pdbqt_path]
-- stability.yml:
-    scatter: [stability__step__1__setup.yml___setup__step__1__gmx_editconf___input_crd_path,
-              stability__step__1__setup.yml___setup__step__2__solvate___input_top_zip_path] #[crd_path, top_zip_path]
-    scatterMethod: dotproduct
+      output_pdb_path: '&ligand_prod.pdbqt'
+    scatter: [input_path]
+
+# remove waters the assiagn partial charges to the protein
+- pdb4amber_run:
     in:
-      nsteps: 10000
-      dt: 0.002
-      temperature: 298.0
-      pressure: 1.0
-- autodock_vina_rescore.yml:
-    scatter: [autodock_vina_rescore__step__1__python_script___input_pdb_path,
-              autodock_vina_rescore__step__4__python_script___input_pdb_path] #[input_pdb_path]
+      input_pdb_path: '*pdbbind_pdbs'
+      config:
+        remove_waters: True
+    scatter: [input_pdb_path]
+
+- convert_mol2:
+    in:
+      input_path: '*pdbbind_pdbs'
+    scatter: [input_path]
+
+- convert_pdbqt:
+    in:
+      input_path: '*pdbbind_pdbs'
+      output_pdb_path: '&protein_prod.pdbqt'
+      arg1: -xr # Receptor needs to be rigid
+    scatter: [input_path]
+
+# rescore protein ligand complexes
+- autodock_vina_rescore:
+    in:
+      input_ligand_pdbqt_path: '*ligand_prod.pdbqt'
+      input_receptor_pdbqt_path: '*protein_prod.pdbqt'
+      score_only: True
+      #local_only: True
+      output_log_path: '&vina_rescore.log'
+      docking_score: '&rescoring_scores' # NOTE: Not a filename, just an explicit edge
+      #output_batch_pdbqt_path: 'pdb_rescore.pdbqt'
+    scatter: [input_ligand_pdbqt_path, input_receptor_pdbqt_path]
     scatterMethod: dotproduct
+
 - scatter_plot:
     in:
-      xs: '*dGs'
-      ys: '*docking_scores'
-      ys2: '*docking_rescores'
+      xs: '*exp_dGs'
+      ys: '*rescoring_scores'
 
 # wic:
 #   graphviz:

@@ -14,6 +14,9 @@ hints:
   DockerRequirement:
     dockerPull: ndonyapour/pdbbind_refined_v2020
 
+requirements:
+  InlineJavascriptRequirement: {}
+
 inputs:
   script:
     type: string
@@ -128,6 +131,14 @@ inputs:
       position: 10
     default: False
 
+  experimental_dGs:
+    label: Estimated Free Energies of Binding
+    doc: |-
+      Estimated Free Energies of Binding
+    type: string?
+    format:
+    - edam:format_2330
+
 outputs:
 
   output_txt_path:
@@ -162,6 +173,28 @@ outputs:
     outputBinding:
       glob: ./*.sdf #or  "*.pdb"
     format: edam:format_3814
+
+  experimental_dGs:
+    label: Experimental Free Energies of Binding
+    doc: |-
+      Experimental Free Energies of Binding
+    type:
+      type: array
+      items: float
+    outputBinding:
+      glob: $(inputs.output_txt_path)
+      loadContents: true
+      outputEval: |
+        ${
+          var lines = self[0].contents.split("\n");
+          var experimental_dGs = [];
+          for (var i = 0; i < lines.length; i++) {
+            var indices = lines[i].split(" ");
+            var experimental_dG = parseFloat(indices[4]);
+            experimental_dGs.push(experimental_dG);
+          }
+          return experimental_dGs;
+        }
 
 $namespaces:
   edam: https://edamontology.org/
