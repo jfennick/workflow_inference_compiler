@@ -54,7 +54,7 @@ inputs:
       position: 4
 
   output_txt_path:
-    label: Path to the text dataset fe
+    label: Path to the text dataset file
     doc: |-
       Path to the text dataset file
       Type: string
@@ -100,7 +100,7 @@ inputs:
     - edam:format_2330
     inputBinding:
       position: 6
-      prefix: --row_min
+      prefix: --min_row
 
   max_row:
     label: The row max index
@@ -115,8 +115,8 @@ inputs:
       prefix: --max_row
 
   convert_Kd_dG:
-    label: If this is set to true, the Kd will be converted to dG
-    doc: If this is set to true, the Kd will be converted to dG
+    label: If this is set to true, dG will be calculated
+    doc: If this is set to true, dG will be calculated
     type: string
     format:
     - edam:format_2330
