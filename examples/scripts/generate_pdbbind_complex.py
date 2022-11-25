@@ -22,8 +22,6 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument('--base_dir', required=True)
     parser.add_argument('--query', required=False, default=False)
     parser.add_argument('--output_txt_path', required=True)
-    parser.add_argument('--output_pdb_paths', required=False, default="")
-    parser.add_argument('--output_sdf_paths', required=False, default="")
     parser.add_argument('--min_row', required=False, default=1)
     parser.add_argument('--max_row', required=False, default=-1)
     parser.add_argument('--convert_Kd_dG', required=False, default="False")
@@ -32,13 +30,13 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 def calculate_dG(Kd: float) -> float:
-    """_summary_
+    """ Calculates binding free energy from Kd
 
     Args:
-        Kd (float): _description_
+        Kd (float): The binding affinity of the protein-ligand complex
 
     Returns:
-        float: _description_
+        float: The binding free energy
     """
     # Calculate the binding free energy from Kd so we can make the correlation plots.
     # See https://en.wikipedia.org/wiki/Binding_constant
@@ -59,13 +57,13 @@ def calculate_dG(Kd: float) -> float:
 
 #def conv_ki_kd(ki):
 def read_index_file(index_file_path: str) -> pd.DataFrame:
-    """_summary_
+    """ Reads the PDBbind index file and extracts Kd data
 
     Args:
-        index_file_path (str): _description_
+        index_file_path (str): The path to the index file
 
     Returns:
-        pd.DataFrame: _description_
+        pd.DataFrame: The Kd data
     """
     data = defaultdict(list)
     # The file format
@@ -75,38 +73,31 @@ def read_index_file(index_file_path: str) -> pd.DataFrame:
                  'nM': 0.001,
                  'pM': 0.000001}
 
-    number_re = '[-+]?(?:\d*\.\d+|\d+)'
     with open(index_file_path, mode='r', encoding='utf-8') as rfile:
         lines = [line for line in rfile.readlines() if line[0] != '#' and 'Kd=' in line]
         for line in lines:
             words = line.split()
-            #print(words)
             data['PDB_code'].append(words[0])
-            data['resolution'].append(words[1])
-            data['release_year'].append(words[2])
-
             # Kd unit conversion to micro molar
             unit = re.split(r"=[-+]?(?:\d*\.\d+|\d+)", words[4])[1]
-            kd = float(re.findall(r"[-+]?(?:\d*\.\d+|\d+)",words[4])[0])
-            data['Kd'].append(kd * unit_conv[unit])
-            data['ligand_name'].append(re.findall(r'\((.*?)\)', words[7])[0])
+            binding_affinity = float(re.findall(r"[-+]?(?:\d*\.\d+|\d+)",words[4])[0])
+            data['Kd'].append(binding_affinity * unit_conv[unit])
+
     return pd.DataFrame.from_dict(data)
 
 
-def load_data(index_file_name, base_dir, query, output_txt_path,
-         output_pdb_paths, output_sdf_paths, min_row=0, max_row=-1, convert_Kd_dG=True) -> None:
-    """_summary_
+def load_data(index_file_name: str, base_dir: str, query:str, output_txt_path:str,
+              min_row: int=1, max_row: int=-1, convert_Kd_dG: bool=False) -> None:
+    """ Filters Kd data beased on a query
 
     Args:
-        index_file_name (_type_): _description_
-        base_dir (_type_): _description_
-        query (_type_): _description_
-        output_txt_path (_type_): _description_
-        output_pdb_paths (_type_): _description_
-        output_sdf_paths (_type_): _description_
-        min_row (int, optional): _description_. Defaults to 1.
-        max_row (int, optional): _description_. Defaults to -1.
-        convert_Kd_dG (bool, optional): _description_. Defaults to True.
+        index_file_name (str): The PDBbind index file name
+        base_dir (str): The base directry of the dataset
+        query (str): The Query to perform
+        output_txt_path (str): The ouput text file
+        min_row (int, optional): min index of rows. Defaults to 1.
+        max_row (int, optional): max index of rows. Defaults to -1.
+        convert_Kd_dG (bool, optional): If this set to True, The dG will be calculated. Defaults to False.
     """
 
     index_file_path = osp.join(base_dir, 'index', index_file_name)
@@ -121,7 +112,6 @@ def load_data(index_file_name, base_dir, query, output_txt_path,
         # We want to convert to zero-based indices and we also want
         # the upper index to be inclusive (i.e. <=) so -1 lower index.
         df = df[(int(min_row) - 1):int(max_row)]
-        print(df)
 
     # Calculate dG
     convert_Kd_dG = eval(convert_Kd_dG)
@@ -131,12 +121,11 @@ def load_data(index_file_name, base_dir, query, output_txt_path,
         for _, row in df.iterrows():
             binding_datum = row['Kd'] * microMolar
             dG_data.append(calculate_dG(binding_datum))
-        df.insert(4, 'dG', dG_data)
+        df.insert(len(df.columns), 'dG', dG_data)
 
     with open(output_txt_path, mode='w', encoding='utf-8') as f:
         dfAsString = df.to_string(header=False, index=False)
         f.write(dfAsString)
-
 
     # copy pdb and sdf files
     for _, row in df.iterrows():
@@ -152,17 +141,12 @@ def load_data(index_file_name, base_dir, query, output_txt_path,
         dist_sdf_path = f'{row["PDB_code"]}_ligand.sdf'
         subprocess.run(["cp", f"{source_sdf_path}", f"{dist_sdf_path}"])
 
-
 def main() -> None:
-    """ Reads the command line arguments and reads the PDBbind data
+    """ Reads the command line arguments
     """
     args = parse_arguments()
     load_data(args.index_file_name, args.base_dir, args.query, args.output_txt_path,
-              args.output_pdb_paths, args.output_sdf_paths,
-              min_row=int(args.min_row), max_row=int(args.max_row),
-              convert_Kd_dG=args.convert_Kd_dG)
-
-
+              min_row=args.min_row, max_row=args.max_row, convert_Kd_dG=args.convert_Kd_dG)
 
 if __name__ == '__main__':
     main()

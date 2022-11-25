@@ -78,9 +78,6 @@ inputs:
     type: string
     format:
     - edam:format_1476 # pdb
-    inputBinding:
-      position: 6
-      prefix: --output_pdb_paths
 
   output_sdf_paths:
     label: Path to the input file
@@ -92,9 +89,6 @@ inputs:
     type: string
     format:
     - edam:format_3814 # sdf
-    inputBinding:
-      position: 7
-      prefix: --output_sdf_paths
 
   min_row:
     label: The row min index
@@ -105,7 +99,7 @@ inputs:
     format:
     - edam:format_2330
     inputBinding:
-      position: 8
+      position: 6
       prefix: --row_min
 
   max_row:
@@ -117,24 +111,24 @@ inputs:
     format:
     - edam:format_2330
     inputBinding:
-      position: 9
+      position: 7
       prefix: --max_row
 
   convert_Kd_dG:
-    label: adds hydrogens to the system
-    doc: adds hydrogens to the system
+    label: If this is set to true, the Kd will be converted to dG
+    doc: If this is set to true, the Kd will be converted to dG
     type: string
     format:
     - edam:format_2330
     inputBinding:
       prefix: --convert_Kd_dG
-      position: 10
+      position: 8
     default: False
 
   experimental_dGs:
-    label: Estimated Free Energies of Binding
+    label: Experimental Free Energies of Binding
     doc: |-
-      Estimated Free Energies of Binding
+      Experimental Free Energies of Binding
     type: string?
     format:
     - edam:format_2330
@@ -189,11 +183,18 @@ outputs:
           var lines = self[0].contents.split("\n");
           var experimental_dGs = [];
           for (var i = 0; i < lines.length; i++) {
-            var indices = lines[i].split(" ");
-            var experimental_dG = parseFloat(indices[4]);
-            experimental_dGs.push(experimental_dG);
+            var words = lines[i].split(" ");
+            if (words.length > 2) {
+              var experimental_dG = parseFloat(words[2]);
+              experimental_dGs.push(experimental_dG);
+            }
           }
-          return experimental_dGs;
+
+          if (experimental_dGs.length == 0) {
+            return null;
+          } else {
+            return experimental_dGs;
+          }
         }
 
 $namespaces:

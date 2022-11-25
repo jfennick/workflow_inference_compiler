@@ -56,6 +56,7 @@ steps:
     in:
       xs: '*exp_dGs'
       ys: '*rescoring_scores'
+      ys2: '*rescoring_scores'
 
 # wic:
 #   graphviz:
