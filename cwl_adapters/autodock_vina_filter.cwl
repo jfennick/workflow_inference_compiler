@@ -209,6 +209,10 @@ outputs:
       # (An external script can write a cwl.output.json file, which will alternatively determine the outputs.)
       outputEval: |
         ${
+          // if (inputs.input_batch_pdbqt_path.length == 0) {
+          //   return [];
+          // }
+
           var lines = self[0].contents.split("\n");
           var files = []; // In this case, flatten the 2D nested array into a 1D array
           for (var i = 0; i < lines.length; i++) {
@@ -216,10 +220,12 @@ outputs:
             //var docking_score = parseFloat(indices[0]); // See below
             var mol_idx = parseInt(indices[1]);
             var mode_idx = parseInt(indices[2]);
+            if (inputs.input_batch_pdbqt_path.length > 0){
             var file = inputs.input_batch_pdbqt_path[mol_idx][mode_idx];
             files.push(file);
+            }
           }
-          return files;
+          return [];
         }
     format: edam:format_1476
 

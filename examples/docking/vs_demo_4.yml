@@ -9,7 +9,7 @@ steps:
       output_sdf_paths: '&pdbbind_sdfs'
       experimental_dGs: '&exp_dGs'
 
-#Assign partial charges (ligand)
+# assign partial charges (ligand)
 - convert_mol2:
     in:
       input_path: '*pdbbind_sdfs'
@@ -51,12 +51,25 @@ steps:
       #output_batch_pdbqt_path: 'pdb_rescore.pdbqt'
     scatter: [input_ligand_pdbqt_path, input_receptor_pdbqt_path]
     scatterMethod: dotproduct
+#
+- autodock_vina_filter:
+    in:
+      input_log_paths: '*vina_rescore.log'
+      input_txt_path: '*binding_data.txt'
+      docking_score_cutoff: -2.0
+      max_num_poses_per_ligand: 1
+      max_num_poses_total: 3 #25 # Use 1 for CI same as max_row
+      rescore: 'True'
+      output_batch_pdbqt_path: '&score'
+      docking_scores: '&docking_rescores' # NOTE: Not a filename, just an explicit edge
+      experimental_dGs: '&dGs' # NOTE: Not a filename, just an explicit edge
 
+# TODO: rescore again, use for ys2
 - scatter_plot:
     in:
-      xs: '*exp_dGs'
-      ys: '*rescoring_scores'
-      ys2: '*rescoring_scores'
+      xs: '*dGs'
+      ys: '*docking_rescores'
+      ys2: '*docking_rescores'
 
 # wic:
 #   graphviz:
