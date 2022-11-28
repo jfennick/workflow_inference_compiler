@@ -51,7 +51,7 @@ def get_tools_cwl(cwl_dirs_file: Path) -> Tools:
         exceptions = ['biobb/biobb_adapters/cwl/biobb_md/gromacs_extra/ndx2resttop.cwl',
                       'biobb/biobb_adapters/cwl/biobb_md/gromacs/genrestr.cwl']
         for cwl_path_str in cwl_paths_sorted:
-            if cwl_path_str in exceptions:
+            if any(e in cwl_path_str for e in exceptions):
                 continue
             #print(cwl_path)
             with open(cwl_path_str, mode='r', encoding='utf-8') as f:
