@@ -768,29 +768,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                     if len(conversions) != 1:
                         print('Warning! More than one file format conversion! Choosing', conversion)
 
-                    yaml_tree_mod = yaml_tree_orig
-                    steps_mod: List[Yaml] = yaml_tree_mod['steps']
-                    steps_mod.insert(i, {conversion.stem: None})
-
-                    # Add inference rules annotations (i.e. for file format conversion)
-                    conv_tool = tools[conversion]
-                    conv_out_tool = conv_tool.cwl['outputs']
-
-                    inference_rules_dict = {}
-                    for out_key, out_val in conv_out_tool.items():
-                        if 'format' in out_val:
-                            inference_rules_dict[out_key] = inference_rules.get(out_val['format'], 'default')
-                    inf_dict = {'wic': {'inference': inference_rules_dict}}
-                    keystr = f'({i+1}, {conversion})' # The yml file uses 1-based indexing
-
-                    if 'wic' in yaml_tree_mod:
-                        if 'steps' in yaml_tree_mod['wic']:
-                            yaml_tree_mod['wic']['steps'] = utils.reindex_wic_steps(yaml_tree_mod['wic']['steps'], i)
-                            yaml_tree_mod['wic']['steps'][keystr] = inf_dict
-                        else:
-                            yaml_tree_mod['wic'].update({'steps': {keystr: inf_dict}})
-                    else:
-                        yaml_tree_mod.update({'wic': {'steps': {keystr: inf_dict}}})
+                    yaml_tree_mod = insert_step_into_workflow(yaml_tree_orig, conversion, tools, i)
 
                     node_data = NodeData(namespaces, yaml_stem, yaml_tree_mod, yaml_tree, {},
                                          explicit_edge_defs_copy2, explicit_edge_calls_copy2,
@@ -904,3 +882,42 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                        explicit_edge_defs_copy, explicit_edge_calls_copy)
     compiler_info = CompilerInfo(rose_tree, env_data)
     return compiler_info
+
+
+def insert_step_into_workflow(yaml_tree_orig: Yaml, stepid: StepId, tools: Tools, i: int) -> Yaml:
+    """Inserts the step with given stepid into a workflow at the given index.
+
+    Args:
+        yaml_tree_orig (Yaml): The original Yaml tree
+        stepid (StepId): The name of the workflow step to be inserted.
+        tools (Tools): The CWL CommandLineTool definitions found using get_tools_cwl().\n
+        yml files that have been compiled to CWL SubWorkflows are also added during compilation.
+        i (int): The index to insert the new workflow step
+
+    Returns:
+        Yaml: A modified Yaml tree with the given stepid inserted at index i
+    """
+    yaml_tree_mod = yaml_tree_orig
+    steps_mod: List[Yaml] = yaml_tree_mod['steps']
+    steps_mod.insert(i, {stepid.stem: None})
+
+    # Add inference rules annotations (i.e. for file format conversion)
+    tool = tools[stepid]
+    out_tool = tool.cwl['outputs']
+
+    inference_rules_dict = {}
+    for out_key, out_val in out_tool.items():
+        if 'format' in out_val:
+            inference_rules_dict[out_key] = inference_rules.get(out_val['format'], 'default')
+    inf_dict = {'wic': {'inference': inference_rules_dict}}
+    keystr = f'({i+1}, {stepid})' # The yml file uses 1-based indexing
+
+    if 'wic' in yaml_tree_mod:
+        if 'steps' in yaml_tree_mod['wic']:
+            yaml_tree_mod['wic']['steps'] = utils.reindex_wic_steps(yaml_tree_mod['wic']['steps'], i)
+            yaml_tree_mod['wic']['steps'][keystr] = inf_dict
+        else:
+            yaml_tree_mod['wic'].update({'steps': {keystr: inf_dict}})
+    else:
+        yaml_tree_mod.update({'wic': {'steps': {keystr: inf_dict}}})
+    return yaml_tree_mod
