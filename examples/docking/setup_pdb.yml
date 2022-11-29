@@ -1,6 +1,6 @@
 inputs:
-  pdb_id:
-    type: string
+  input_pdb_path:
+    type: File
     format:
     - edam:format_1476
   pdb_path:
@@ -23,19 +23,16 @@ outputs:
   pdb_path:
     type: File
     format: edam:format_1476
-    outputSource: setup_pdb__step__5__str_check_add_hydrogens/output_structure_path
+    outputSource: setup_pdb__step__4__str_check_add_hydrogens/output_structure_path
   box_path:
     type: File
     format: edam:format_1476
-    outputSource: setup_pdb__step__8__box/output_pdb_path
+    outputSource: setup_pdb__step__7__box/output_pdb_path
 
 steps:
-  - download_pdb.yml:
-      in:
-         pdb_id: ~pdb_id
   - pdb4amber_run: # NOTE: See comments below w.r.t. pdb2gmx
       in:
-        input_pdb_path: '*protein.pdb'
+        input_pdb_path: ~input_pdb_path
         output_pdb_path: '&receptor_pdb4amber.pdb'
   - str_check_add_hydrogens:
       in: # charges = True outputs in pdbqt format; mode = auto, list, ph (must use ph mode to set ph!)

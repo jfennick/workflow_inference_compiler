@@ -1,8 +1,8 @@
 steps:
 - download_pdbbind_refined:
     in:
-      query: "Kd > 1000" # should be in units of micro molar
-      max_row: 3 #25 # Use 1 for CI
+      query: "Kd < 100" # should be in units of micro molar
+      max_row: 2 #25 # Use 1 for CI
       convert_Kd_dG: 'True'
       output_txt_path: '&binding_data.txt'
       output_pdb_paths: '&pdbbind_pdbs'
@@ -23,18 +23,19 @@ steps:
 - pdb4amber_run:
     in:
       input_pdb_path: '*pdbbind_pdbs'
+      output_pdb_path: '&pdbbind_pdb4amber.pdb'
       config:
         remove_waters: True
+        remove_hydrogen: True
     scatter: [input_pdb_path]
 
 - convert_mol2:
     in:
-      input_path: '*pdbbind_pdbs'
+      input_path: '*pdbbind_pdb4amber.pdb'
     scatter: [input_path]
 
 - convert_pdbqt:
     in:
-      input_path: '*pdbbind_pdbs'
       output_pdb_path: '&protein_prod.pdbqt'
       arg1: -xr # Receptor needs to be rigid
     scatter: [input_path]
@@ -48,28 +49,68 @@ steps:
       #local_only: True
       output_log_path: '&vina_rescore.log'
       docking_score: '&rescoring_scores' # NOTE: Not a filename, just an explicit edge
+      output_ligand_pdbqt_path: '&ligand_rescore.pdbqt'
       #output_batch_pdbqt_path: 'pdb_rescore.pdbqt'
     scatter: [input_ligand_pdbqt_path, input_receptor_pdbqt_path]
     scatterMethod: dotproduct
-#
+
+- duplicate:
+    in:
+      input_pdbqt_singleton_path: '*protein_prod.pdbqt'
+      input_pdbqt_array_path: '*ligand_rescore.pdbqt'
+      output_pdbqt_path: '&receptor_dup_2D.pdbqt'
+    scatter: [input_pdbqt_singleton_path, input_pdbqt_array_path]
+    scatterMethod: dotproduct
+
 - autodock_vina_filter:
     in:
       input_log_paths: '*vina_rescore.log'
       input_txt_path: '*binding_data.txt'
-      docking_score_cutoff: -2.0
-      max_num_poses_per_ligand: 1
-      max_num_poses_total: 3 #25 # Use 1 for CI same as max_row
+      docking_score_cutoff: -1.0
+      max_num_poses_per_ligand: 2
+      max_num_poses_total: 1 #25 # Use 1 for CI same as max_row
       rescore: 'True'
-      output_batch_pdbqt_path: '&score'
+      input_ligand_pdbqt_path: '*ligand_rescore.pdbqt'
+      output_ligand_pdbqt_path: '&lignad_filter.pdbqt'
+      input_receptor_pdbqt_path: '*receptor_dup_2D.pdbqt'
+      output_receptor_pdbqt_path: '&receptor_filter.pdbqt'
       docking_scores: '&docking_rescores' # NOTE: Not a filename, just an explicit edge
       experimental_dGs: '&dGs' # NOTE: Not a filename, just an explicit edge
 
-# TODO: rescore again, use for ys2
-- scatter_plot:
+- setup_pdb.yml:
     in:
-      xs: '*dGs'
-      ys: '*docking_rescores'
-      ys2: '*docking_rescores'
+      input_pdb_path: '*pdbbind_pdb4amber.pdb'
+      pdb_path: '&pdb.pdbqt'
+      box_path: '&box.pdb'
+      box_buffer: 20 # Angstroms
+      water_type: spce
+      forcefield: amber99sb-ildn
+    scatter: [input_pdb_path]
+
+#
+
+# - stability.yml:
+#     scatter: [crd_path, top_zip_path]
+#     scatterMethod: dotproduct
+#     in:
+#       nsteps: 10000
+#       dt: 0.002
+#       temperature: 298.0
+#       pressure: 1.0
+# - autodock_vina_rescore.yml:
+#     scatter: [input_pdb_path]
+# - scatter_plot:
+#     in:
+#       xs: '*dGs'
+#       ys: '*docking_scores'
+#       ys2: '*docking_rescores'
+
+# # TODO: rescore again, use for ys2
+# - scatter_plot:
+#     in:
+#       xs: '*dGs'
+#       ys: '*docking_rescores'
+#       ys2: '*docking_rescores'
 
 # wic:
 #   graphviz:
