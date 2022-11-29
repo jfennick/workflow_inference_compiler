@@ -10,7 +10,7 @@ from mergedeep import merge, Strategy
 import networkx as nx
 import yaml
 
-from . import inference, utils, utils_cwl, python_cwl_adapter
+from . import inference, utils, utils_cwl, utils_graphs, python_cwl_adapter
 from .wic_types import (CompilerInfo, EnvData, ExplicitEdgeCalls,
                         ExplicitEdgeDefs, GraphData, GraphReps, Namespaces,
                         NodeData, RoseTree, Tool, Tools, WorkflowInputsFile,
@@ -354,7 +354,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
             # intermittent 'syntax errors'.
             pass
             # Actually, this is a significant performance bottleneck and isn't really necessary.
-            #utils.make_tool_dag(stem, tool_i, args.graph_dark_theme)
+            #utils_graphs.make_tool_dag(stem, tool_i, args.graph_dark_theme)
 
         # Add run tag, using relative or flat-directory paths
         # NOTE: run: path issues were causing test_cwl_embedding_independence()
@@ -376,48 +376,13 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
         else:
             steps[i] = {step_key: {'run': run_path}}
 
-        # TODO: Add label and doc tags
-
         # Generate intermediate file names between steps.
-        # The inputs for a given step need to come from either
-        # 1. the input.yaml file for the overall workflow (extract into separate yml file) or
-        # 2. the outputs from the previous steps (most recent first).
-        # If there isn't an exact match, remove input_* and output_* from the
-        # current step and previous steps, respectively, and then check again.
-        # If there still isn't an exact match, explicit renaming may be required.
         if 'in' not in steps[i][step_key]:
             steps[i][step_key]['in'] = {}
 
-        # cachedir_path needs to be an absolute path, but for reproducibility
-        # we don't want users' home directories in the yml files.
         if 'cwl_watcher' == step_key:
-            cachedir_path = Path(args.cachedir).absolute()
-            #print('setting cachedir_path to', cachedir_path)
-            steps[i][step_key]['in']['root_workflow_yml_path'] = str(Path(args.yaml).parent.absolute())
-
-            steps[i][step_key]['in']['cachedir_path'] = str(cachedir_path)
-            cwl_dirs_file_abs = str(Path(args.cwl_dirs_file).absolute())[:-4] + '_absolute.txt'
-            steps[i][step_key]['in']['cwl_dirs_file'] = cwl_dirs_file_abs
-            yml_dirs_file_abs = str(Path(args.yml_dirs_file).absolute())[:-4] + '_absolute.txt'
-            steps[i][step_key]['in']['yml_dirs_file'] = yml_dirs_file_abs
-
-            # Add a 'dummy' values to explicit_edge_calls, because
-            # that determines sub_args_provided when the recursion returns.
-            arg_keys_ = ['root_workflow_yml_path', 'cachedir_path', 'cwl_dirs_file', 'yml_dirs_file']
-            for arg_key_ in arg_keys_:
-                in_name_ = f'{step_name_i}___{arg_key_}' # {step_name_i}_input___{arg_key}
-                explicit_edge_calls_copy.update({in_name_: (namespaces + [step_name_i], arg_key_)})
-
-            # NOTE: Make the paths within *_dirs_file absolute here
-            ns_paths = utils.read_lines_pairs(Path(args.yml_dirs_file))
-            pairs_abs = [ns + ' ' + str(Path(path).absolute()) for ns, path in ns_paths]
-            with open(yml_dirs_file_abs, mode='w', encoding='utf-8') as f:
-                f.write('\n'.join(pairs_abs))
-
-            ns_paths = utils.read_lines_pairs(Path(args.cwl_dirs_file))
-            pairs_abs = [ns + ' ' + str(Path(path).absolute()) for ns, path in ns_paths]
-            with open(cwl_dirs_file_abs, mode='w', encoding='utf-8') as f:
-                f.write('\n'.join(pairs_abs))
+            in_dict_in = steps[i][step_key]['in'] # NOTE: Mutates in_dict_in
+            utils.write_absolute_config_files(args, in_dict_in, namespaces, step_name_i, explicit_edge_calls_copy)
 
         args_provided = []
         if steps[i][step_key] and 'in' in steps[i][step_key]:
@@ -432,10 +397,6 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
         elif tool_i.cwl['class'] == 'Workflow':
             args_required = list(in_tool)
 
-            # Add the inputs. For now, assume that all sub-workflows have been
-            # auto-generated from a previous application of this script, and
-            # thus that all of their transitive inputs have been satisfied.
-            # (i.e. simply combine the input yml files using the cat command.)
             if 'in' not in steps[i][step_key]:
                 steps[i][step_key]['in'] = {key: key for key in args_required}
             else:
@@ -446,7 +407,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
         else:
             raise Exception('Unknown class', tool_i.cwl['class'])
 
-        # Note: Some config tags are not required in the cwl files, but are in
+        # Note: Some biobb config tags are not required in the cwl files, but are in
         # fact required in the python source code! See check_mandatory_property
         # (Solution: refactor all required arguments out of config and list
         # them as explicit inputs in the cwl files, then modify the python
@@ -516,14 +477,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 steps[i][step_key]['in'][arg_key] = {'source': in_name}
                 continue
 
-            in_type = in_tool[arg_key]['type']
-            if isinstance(in_type, str):
-                in_type = in_type.replace('?', '')  # Providing optional arguments makes them required
-            in_type = utils_cwl.canonicalize_type(in_type)
-            in_dict = {'type': in_type}
-            if 'format' in in_tool[arg_key]:
-                in_format = in_tool[arg_key]['format']
-                in_dict['format'] = in_format
+            in_dict = utils_cwl.copy_cwl_IO_dict(in_tool[arg_key], True)
 
             if isinstance(arg_val, Dict) and arg_val['source'][0] == '~':
                 # NOTE: This is somewhat of a hack; it is useful for when
@@ -538,6 +492,16 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                     print("arg_val['source']", arg_val['source'])
                     print("yaml_tree.get('inputs')", yaml_tree.get('inputs', {}))
                 assert arg_val['source'] in yaml_tree.get('inputs', {})
+
+                inputs_key_dict = yaml_tree['inputs'][arg_val['source']]
+                if 'doc' in inputs_key_dict:
+                    inputs_key_dict['doc'] += '\\n' + in_dict.get('doc', '')
+                else:
+                    inputs_key_dict['doc'] = in_dict.get('doc', '')
+                if 'label' in inputs_key_dict:
+                    inputs_key_dict['label'] += '\\n' + in_dict.get('label', '')
+                else:
+                    inputs_key_dict['label'] = in_dict.get('label', '')
 
                 if arg_val['source'] in input_mapping_copy:
                     input_mapping_copy[arg_val['source']].append(in_name)
@@ -688,7 +652,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                         else:
                             nss_call = namespaces + [step_name_i] + nss_call_embedded
 
-                        utils.add_graph_edge(args, graph_init, nss_def, nss_call, label, color='blue')
+                        utils_graphs.add_graph_edge(args, graph_init, nss_def, nss_call, label, color='blue')
             else:
                 # NOTE: See comment above about excluding cwl_watcher from
                 # explicit edge dereferences.
@@ -737,11 +701,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 # We provided an explicit argument (but not an edge) in a subworkflow,
                 # and now we just need to pass it up to the root workflow.
                 #print('passing', in_name)
-                in_type = in_tool[arg_key]['type']
-                in_dict = {'type': in_type}
-                if 'format' in in_tool[arg_key]:
-                    in_format = in_tool[arg_key]['format']
-                    in_dict['format'] = in_format
+                in_dict = utils_cwl.copy_cwl_IO_dict(in_tool[arg_key])
                 inputs_workflow.update({in_name: in_dict})
                 arg_keyval = {arg_key: in_name}
                 steps[i] = utils_cwl.add_yamldict_keyval_in(steps[i], step_key, arg_keyval)
@@ -772,11 +732,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                 more_recursion = yaml_stem in nss_call_tails_stems and nss_call_tails_stems.index(yaml_stem) > 0
                 if (nss_call_tails_stems == []) or more_recursion:
                     # i.e. (if 'dummy' value) or (if it is possible to do more recursion)
-                    in_type = in_tool[arg_key]['type']
-                    in_dict = {'type': in_type}
-                    if 'format' in in_tool[arg_key]:
-                        in_format = in_tool[arg_key]['format']
-                        in_dict['format'] = in_format
+                    in_dict = utils_cwl.copy_cwl_IO_dict(in_tool[arg_key])
                     inputs_workflow.update({in_name: in_dict})
                     steps[i][step_key]['in'][arg_key] = {'source': in_name}
                     # Store explicit edge call site info up through the recursion.
@@ -812,29 +768,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                     if len(conversions) != 1:
                         print('Warning! More than one file format conversion! Choosing', conversion)
 
-                    yaml_tree_mod = yaml_tree_orig
-                    steps_mod: List[Yaml] = yaml_tree_mod['steps']
-                    steps_mod.insert(i, {conversion.stem: None})
-
-                    # Add inference rules annotations (i.e. for file format conversion)
-                    conv_tool = tools[conversion]
-                    conv_out_tool = conv_tool.cwl['outputs']
-
-                    inference_rules_dict = {}
-                    for out_key, out_val in conv_out_tool.items():
-                        if 'format' in out_val:
-                            inference_rules_dict[out_key] = inference_rules.get(out_val['format'], 'default')
-                    inf_dict = {'wic': {'inference': inference_rules_dict}}
-                    keystr = f'({i+1}, {conversion})' # The yml file uses 1-based indexing
-
-                    if 'wic' in yaml_tree_mod:
-                        if 'steps' in yaml_tree_mod['wic']:
-                            yaml_tree_mod['wic']['steps'] = utils.reindex_wic_steps(yaml_tree_mod['wic']['steps'], i)
-                            yaml_tree_mod['wic']['steps'][keystr] = inf_dict
-                        else:
-                            yaml_tree_mod['wic'].update({'steps': {keystr: inf_dict}})
-                    else:
-                        yaml_tree_mod.update({'wic': {'steps': {keystr: inf_dict}}})
+                    yaml_tree_mod = insert_step_into_workflow(yaml_tree_orig, conversion, tools, i)
 
                     node_data = NodeData(namespaces, yaml_stem, yaml_tree_mod, yaml_tree, {},
                                          explicit_edge_defs_copy2, explicit_edge_calls_copy2,
@@ -847,15 +781,12 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                     #compiler_info_dummy = CompilerInfo(RoseTree(node_data_dummy, None), None)
                     return compiler_info
 
-        # Add CommandLineTool outputs tags to workflow out tags.
+        # Add CommandLineTool/Subworkflow outputs tags to workflow out tags.
         # Note: Add all output tags for now, but depending on config options,
         # not all output files will be generated. This may cause an error.
         out_keyvals = {}
         for out_key, out_dict in tool_i.cwl['outputs'].items():
-            if 'format' in out_dict:
-                out_keyvals[out_key] = {'type': out_dict['type'], 'format': out_dict['format']}
-            else:
-                out_keyvals[out_key] = {'type': out_dict['type']}
+            out_keyvals[out_key] = utils_cwl.copy_cwl_IO_dict(out_dict)
             #print(out_key, out_keyvals[out_key])
         if not out_keyvals: # FYI out_keyvals should never be {}
             print(f'Error! no outputs for step {step_key}')
@@ -874,7 +805,7 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
         step_name_num = utils.step_name_str(yaml_stem, num-1, name)
         step_name_nss = '___'.join(namespaces + [step_name_num])
         steps_ranksame.append(f'"{step_name_nss}"') # Escape with double quotes.
-    utils.add_subgraphs(args, graph, sibling_subgraphs, namespaces, step_1_names, steps_ranksame)
+    utils_graphs.add_subgraphs(args, graph, sibling_subgraphs, namespaces, step_1_names, steps_ranksame)
     step_name_1 = utils.get_step_name_1(step_1_names, yaml_stem, namespaces, steps_keys, subkeys)
 
     # Add the provided workflow inputs to the workflow inputs from each step
@@ -951,3 +882,42 @@ def compile_workflow_once(yaml_tree_ast: YamlTree,
                        explicit_edge_defs_copy, explicit_edge_calls_copy)
     compiler_info = CompilerInfo(rose_tree, env_data)
     return compiler_info
+
+
+def insert_step_into_workflow(yaml_tree_orig: Yaml, stepid: StepId, tools: Tools, i: int) -> Yaml:
+    """Inserts the step with given stepid into a workflow at the given index.
+
+    Args:
+        yaml_tree_orig (Yaml): The original Yaml tree
+        stepid (StepId): The name of the workflow step to be inserted.
+        tools (Tools): The CWL CommandLineTool definitions found using get_tools_cwl().\n
+        yml files that have been compiled to CWL SubWorkflows are also added during compilation.
+        i (int): The index to insert the new workflow step
+
+    Returns:
+        Yaml: A modified Yaml tree with the given stepid inserted at index i
+    """
+    yaml_tree_mod = yaml_tree_orig
+    steps_mod: List[Yaml] = yaml_tree_mod['steps']
+    steps_mod.insert(i, {stepid.stem: None})
+
+    # Add inference rules annotations (i.e. for file format conversion)
+    tool = tools[stepid]
+    out_tool = tool.cwl['outputs']
+
+    inference_rules_dict = {}
+    for out_key, out_val in out_tool.items():
+        if 'format' in out_val:
+            inference_rules_dict[out_key] = inference_rules.get(out_val['format'], 'default')
+    inf_dict = {'wic': {'inference': inference_rules_dict}}
+    keystr = f'({i+1}, {stepid})' # The yml file uses 1-based indexing
+
+    if 'wic' in yaml_tree_mod:
+        if 'steps' in yaml_tree_mod['wic']:
+            yaml_tree_mod['wic']['steps'] = utils.reindex_wic_steps(yaml_tree_mod['wic']['steps'], i)
+            yaml_tree_mod['wic']['steps'][keystr] = inf_dict
+        else:
+            yaml_tree_mod['wic'].update({'steps': {keystr: inf_dict}})
+    else:
+        yaml_tree_mod.update({'wic': {'steps': {keystr: inf_dict}}})
+    return yaml_tree_mod

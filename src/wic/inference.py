@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from . import utils, utils_cwl
+from . import utils, utils_cwl, utils_graphs
 from .wic_types import (GraphReps, InternalOutputs, Namespaces, StepId, Tool, Tools,
                         WorkflowInputs, Yaml)
 
@@ -74,11 +74,7 @@ def perform_edge_inference(args: argparse.Namespace,
     step_name_i = utils.step_name_str(yaml_stem, i, step_key)
 
     in_tool = tool_i.cwl['inputs']
-    in_type = in_tool[arg_key]['type']
-    if isinstance(in_type, str):
-        in_type = in_type.replace('?', '')  # Providing optional arguments makes them required
-    in_type = utils_cwl.canonicalize_type(in_type)
-    in_dict = {'type': in_type}
+    in_dict = utils_cwl.copy_cwl_IO_dict(in_tool[arg_key], True)
 
     if arg_key in steps[i][step_key].get('scatter', []):
         # Promote scattered input types to arrays
@@ -118,9 +114,7 @@ def perform_edge_inference(args: argparse.Namespace,
             #if inference_rule == 'continue':
             #    continue
 
-            out_type = out_tool[out_key]['type']
-            out_type = utils_cwl.canonicalize_type(out_type)
-            out_dict = {'type': out_type}
+            out_dict = utils_cwl.copy_cwl_IO_dict(out_tool[out_key])
 
             if 'scatter' in steps[j][steps_keys[j]]:
                 # Promote scattered output types to arrays
@@ -256,7 +250,7 @@ def perform_edge_inference(args: argparse.Namespace,
                 # TODO: check this
                 out_key_no_namespace = out_key.split('___')[-1]
                 label = out_key_no_namespace if tool_j.cwl['class'] == 'Workflow' else out_key
-                utils.add_graph_edge(args, graph, nss1, nss2, label)
+                utils_graphs.add_graph_edge(args, graph, nss1, nss2, label)
 
             return steps_i  # Short circuit
 
