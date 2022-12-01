@@ -10,35 +10,9 @@ steps:
       experimental_dGs: '&exp_dGs'
 
 # assign partial charges (ligand)
-- convert_mol2:
-    in:
-      input_path: '*pdbbind_sdfs'
-    scatter: [input_path]
-- convert_pdbqt:
-    in:
-      output_pdb_path: '&mol_prod.pdbqt'
-    scatter: [input_path]
-
-# remove waters, then assigns partial charges to the protein
-- pdb4amber_run:
-    in:
-      input_pdb_path: '*pdbbind_pdbs'
-      output_pdb_path: '&pdbbind_pdb4amber.pdb'
-      config:
-        remove_waters: True
-        remove_hydrogen: True
-    scatter: [input_pdb_path]
-
-- convert_mol2:
-    in:
-      input_path: '*pdbbind_pdb4amber.pdb'
-    scatter: [input_path]
-
-- convert_pdbqt:
-    in:
-      output_pdb_path: '&receptor_prod.pdbqt'
-      arg1: -xr # Receptor needs to be rigid
-    scatter: [input_path]
+- convert_pdbqt.yml:
+    scatter: [input_pdb_path, input_sdf_path]
+    scatterMethod: dotproduct
 
 # rescore protein ligand complexes
 - autodock_vina_rescore:
@@ -112,19 +86,16 @@ steps:
       ys: '*docking_scores'
       ys2: '*docking_rescores'
 
-# 4ll3 0.000003 -15.774537
-# 4jn2 0.000002 -15.923362 pass
-# 1duv 0.000002 -16.084398 pass
 # wic:
 #   graphviz:
 #     label: Virtual Screening Demo
 #   steps:
-#     (1, setup_pdb.yml):
+#     (1, download_pdbbind_refined):
 #       wic:
 #         inlineable: False
 #         graphviz:
 #           label: Setup PDB
-#     (2, download_smiles_ligand_db.yml):
+#     (2, convert_pdbqt.yml):
 #       wic:
 #         inlineable: False
 #     (3, assign_partial_charges.yml):

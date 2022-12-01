@@ -4,6 +4,7 @@ import os.path as osp
 import re
 import subprocess
 import argparse
+import distutils.util
 import pandas as pd
 import math
 from typing import List
@@ -78,10 +79,14 @@ def read_index_file(index_file_path: str) -> pd.DataFrame:
         for line in lines:
             words = line.split()
             data['PDB_code'].append(words[0])
-            # Kd unit conversion to micro molar
+            data['resolution'].append(words[1])
+            data['release_year'].append(words[2])
+
+            # Kd conversion to micro molar
             unit = re.split(r"=[-+]?(?:\d*\.\d+|\d+)", words[4])[1]
-            binding_affinity = float(re.findall(r"[-+]?(?:\d*\.\d+|\d+)",words[4])[0])
-            data['Kd'].append(binding_affinity * unit_conv[unit])
+            kd = float(re.findall(r"[-+]?(?:\d*\.\d+|\d+)",words[4])[0])
+            data['Kd'].append(kd * unit_conv[unit])
+            data['ligand_name'].append(re.findall(r'\((.*?)\)', words[7])[0])
 
     return pd.DataFrame.from_dict(data)
 
@@ -114,21 +119,22 @@ def load_data(index_file_name: str, base_dir: str, query:str, output_txt_path:st
         df = df[(int(min_row) - 1):int(max_row)]
 
     # Calculate dG
-    convert_Kd_dG = eval(convert_Kd_dG)
+    binding_data = df[['PDB_code', 'Kd']]
+    microMolar = 0.000001  # uM
+
+    convert_Kd_dG = distutils.util.strtobool(convert_Kd_dG)
     if convert_Kd_dG:
-        dG_data = []
-        microMolar = 0.000001 # uM
-        for _, row in df.iterrows():
-            binding_datum = row['Kd'] * microMolar
-            dG_data.append(calculate_dG(binding_datum))
-        df.insert(len(df.columns), 'dG', dG_data)
+        dG_data = binding_data.apply(lambda row: calculate_dG(row.Kd * microMolar),
+                           axis = 1)
+        binding_data.insert(len(binding_data.columns), 'dG', dG_data)
 
     with open(output_txt_path, mode='w', encoding='utf-8') as f:
-        dfAsString = df.to_string(header=False, index=False)
+        dfAsString = binding_data.to_string(header=False, index=False)
         f.write(dfAsString)
 
+
     # copy pdb and sdf files
-    for _, row in df.iterrows():
+    for _, row in binding_data.iterrows():
         source_pdb_path = osp.join(base_dir,
                                    row['PDB_code'],
                                    f'{row["PDB_code"]}_protein.pdb')
