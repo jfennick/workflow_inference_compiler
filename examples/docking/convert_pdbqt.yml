@@ -1,0 +1,69 @@
+inputs:
+  input_pdb_path:
+    type: File
+    format:
+    - edam:format_1476
+  input_sdf_path:
+    type: File
+    format:
+    - edam:format_3814
+
+steps:
+- convert_mol2:
+    in:
+      input_path: ~input_sdf_path
+
+- convert_pdbqt:
+    in:
+      output_pdb_path: '&mol_prod.pdbqt'
+
+# remove waters, then assigns partial charges to the protein
+- pdb4amber_run:
+    in:
+      input_pdb_path: ~input_pdb_path
+      output_pdb_path: '&pdbbind_pdb4amber.pdb'
+      config:
+        remove_waters: True
+        remove_hydrogen: True
+
+- convert_mol2:
+    in:
+      input_path: '*pdbbind_pdb4amber.pdb'
+
+- convert_pdbqt:
+    in:
+      output_pdb_path: '&receptor_prod.pdbqt'
+      arg1: -xr # Receptor needs to be rigid
+
+
+
+
+# - convert_mol2:
+#     in:
+#       input_path: '*pdbbind_sdfs'
+#     scatter: [input_path]
+# - convert_pdbqt:
+#     in:
+#       output_pdb_path: '&mol_prod.pdbqt'
+#     scatter: [input_path]
+
+# # remove waters, then assigns partial charges to the protein
+# - pdb4amber_run:
+#     in:
+#       input_pdb_path: '*pdbbind_pdbs'
+#       output_pdb_path: '&pdbbind_pdb4amber.pdb'
+#       config:
+#         remove_waters: True
+#         remove_hydrogen: True
+#     scatter: [input_pdb_path]
+
+# - convert_mol2:
+#     in:
+#       input_path: '*pdbbind_pdb4amber.pdb'
+#     scatter: [input_path]
+
+# - convert_pdbqt:
+#     in:
+#       output_pdb_path: '&receptor_prod.pdbqt'
+#       arg1: -xr # Receptor needs to be rigid
+#     scatter: [input_path]
