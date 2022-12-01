@@ -29,8 +29,17 @@ steps:
       binding_data_column: Standard Value
       convert_Kd_dG: 'True'
       output_txt_path: '&binding_data.txt'
+
 - ligand_modeling_docking.yml:
     scatter: [sdf_path]
+
+- duplicate:
+    in:
+      input_pdbqt_singleton_path: '*pdb.pdbqt'
+      input_pdbqt_array_path: '*ligand_nested_split.pdbqt'
+      output_pdbqt_path: '&receptor_dup_2D.pdbqt'
+    scatter: [input_pdbqt_array_path]
+
 - autodock_vina_filter:
     in:
       input_log_paths: '*vina.log' # NOTE: plural
@@ -39,10 +48,13 @@ steps:
       max_num_poses_per_ligand: 1
       max_num_poses_total: 1 #25 # Use 1 for CI
       input_ligand_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
-      output_ligand_pdbqt_path: '&ligand.pdbqt'
+      output_ligand_pdbqt_path: '&ligand_filter.pdbqt'
+      input_receptor_pdbqt_path: '*receptor_dup_2D.pdbqt'
       docking_scores: '&docking_scores' # NOTE: Not a filename, just an explicit edge
       experimental_dGs: '&dGs' # NOTE: Not a filename, just an explicit edge
 - gen_topol_params.yml:
+    in:
+      input_ligand_pdbqt_path: '*ligand_filter.pdbqt'
     scatter: [input_ligand_pdbqt_path]
 - stability.yml:
     scatter: [crd_path, top_zip_path]
