@@ -1,7 +1,7 @@
 steps:
 - download_pdbbind_refined:
     in:
-      query: "Kd < 0.000003" #" "Kd < 0.000003" #"PDB_code == '4ll3'" #"Kd < 0.000005" # should be in units of micro molar
+      query: "Kd < 0.0000022" #" "Kd < 0.000003" #"PDB_code == '4ll3'" #"Kd < 0.000005" # should be in units of micro molar
       max_row: 2 #25 # Use 1 for CI
       convert_Kd_dG: 'True'
       output_txt_path: '&binding_data.txt'

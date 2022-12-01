@@ -1,9 +1,15 @@
 steps:
-- setup_pdb.yml:
+- download_pdb.yml:
     in:
       #pdb_id: 1r4l # ACE2
       #pdb_id: 1ntp # trypsin
       pdb_id: 1uao # chignolin (for speed)
+      #pdb_id: 6us9 # Influenza A M2
+      #pdb_id: 2rlf # Influenza A M2
+
+- setup_pdb.yml:
+    in:
+      input_pdb_path: '*protein.pdb'
       pdb_path: '&pdb.pdbqt'
       box_path: '&box.pdb'
       box_buffer: 20 # Angstroms
@@ -32,12 +38,12 @@ steps:
       docking_score_cutoff: -1.0
       max_num_poses_per_ligand: 1
       max_num_poses_total: 1 #25 # Use 1 for CI
-      input_batch_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
-      output_batch_pdbqt_path: '&ligand.pdbqt'
+      input_ligand_pdbqt_path: '*ligand_nested_split.pdbqt' # 2D Array type
+      output_ligand_pdbqt_path: '&ligand.pdbqt'
       docking_scores: '&docking_scores' # NOTE: Not a filename, just an explicit edge
       experimental_dGs: '&dGs' # NOTE: Not a filename, just an explicit edge
 - gen_topol_params.yml:
-    scatter: [pdbqt_path]
+    scatter: [input_ligand_pdbqt_path]
 - stability.yml:
     scatter: [crd_path, top_zip_path]
     scatterMethod: dotproduct

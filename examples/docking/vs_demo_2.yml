@@ -14,6 +14,7 @@ steps:
       box_buffer: 20 # Angstroms
       water_type: spce
       forcefield: amber99sb-ildn
+
 - download_smiles_ligand_db.yml:
     in:
       path: https://smacc.mml.unc.edu/ncats_target_based_curated.xlsx
@@ -26,28 +27,56 @@ steps:
       convert_Kd_dG: 'True'
       output_txt_path: '&binding_data.txt'
 - assign_partial_charges.yml:
-    scatter: [input_path]
+    scatter: input_path
 # NOTE: cwltool uses the CLI args to determine cacheing. In batch mode, the
 # ligands are passed (as CLI args) to vina all at once. Thus, if you want to
 # incrementally increase the number of ligands, the previous results will NOT be cached!
+
 - autodock_vina_batch:
     in:
       input_receptor_pdbqt_path: '*pdb.pdbqt'
       input_box_path: '*box.pdb'
       output_log_path: '&vina.log'
+      output_batch_pdbqt_path: '&ligand_decoys_1D.pdbqt'
+
 - split_pdbqt:
     scatter: [input_path]
+    in:
+      input_path: '*ligand_decoys_1D.pdbqt'
+      output_pdb_path: '&ligand_decoys_2D.pdbqt'
+
+- duplicate:
+    in:
+      input_pdbqt_singleton_path: '*pdb.pdbqt'
+      input_pdbqt_array_path: '*ligand_decoys_1D.pdbqt'
+      output_pdbqt_path: '&receptor_dup_1D.pdbqt'
+
+- duplicate:
+    scatter: [input_pdbqt_singleton_path, input_pdbqt_array_path]
+    scatterMethod: dotproduct
+    in:
+      input_pdbqt_singleton_path: '*receptor_dup_1D.pdbqt'
+      input_pdbqt_array_path: '*ligand_decoys_2D.pdbqt'
+      output_pdbqt_path: '&receptor_dup_2D.pdbqt'
+
 - autodock_vina_filter:
     in:
+      input_ligand_pdbqt_path: '*ligand_decoys_2D.pdbqt'
+      output_ligand_pdbqt_path: '&ligand_filter.pdbqt'
+      input_receptor_pdbqt_path: '*receptor_dup_2D.pdbqt'
       input_log_path: '*vina.log'
       input_txt_path: '*binding_data.txt'
       docking_score_cutoff: -1.0
       max_num_poses_per_ligand: 1
-      max_num_poses_total: 1 #25 # Use 1 for CI
+      max_num_poses_total: 2 #25 # Use 1 for CI
       docking_scores: '&docking_scores'
       experimental_dGs: '&dGs'
+
 - gen_topol_params.yml:
-    scatter: [pdbqt_path]
+    in:
+      input_ligand_pdbqt_path: '*ligand_filter.pdbqt'
+    scatter: [input_ligand_pdbqt_path]
+
 - stability.yml:
     scatter: [crd_path, top_zip_path]
     scatterMethod: dotproduct
@@ -58,12 +87,12 @@ steps:
       pressure: 1.0
 - autodock_vina_rescore.yml:
     scatter: [input_pdb_path]
+
 - scatter_plot:
     in:
       xs: '*dGs'
       ys: '*docking_scores'
       ys2: '*docking_rescores'
-
 wic:
   graphviz:
     label: Virtual Screening Demo

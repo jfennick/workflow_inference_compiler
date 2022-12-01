@@ -165,7 +165,7 @@ outputs:
       Accepted formats: sdf
     type: File[]
     outputBinding:
-      glob: ./*.sdf #or  "*.pdb"
+      glob: ./*.sdf #or  "*.sdf"
     format: edam:format_3814
 
   experimental_dGs:
