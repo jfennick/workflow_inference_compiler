@@ -1,14 +1,14 @@
-# pylint: disable=no-member
+# pylint: disable=import-outside-toplevel,no-member
+# type: ignore
+from collections import defaultdict
+import distutils.util
+import math
 import os.path as osp
 import re
 import subprocess
 import argparse
-import distutils.util
+
 import pandas as pd
-import math
-from typing import List
-import pandas as pd
-from collections import defaultdict
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -55,9 +55,9 @@ def calculate_dG(Kd: float) -> float:
     dG = RT * math.log(Kd / standard_concentration)
     return dG
 
-#def conv_ki_kd(ki):
+
 def read_index_file(index_file_path: str) -> pd.DataFrame:
-    """ Reads the PDBbind index file and extracts Kd data
+    """ Reads the PDBbind index file and extracts binding data
 
     Args:
         index_file_path (str): The path to the index file
@@ -124,8 +124,7 @@ def load_data(index_file_name: str, base_dir: str, query:str, output_txt_path:st
     binding_data = df[['PDB_code', 'value', 'Kd_Ki']]
     if convert_Kd_dG:
         microMolar = 0.000001  # uM
-        dG_data = binding_data.apply(lambda row: calculate_dG(row.value * microMolar),
-                                    axis = 1)
+        dG_data = [calculate_dG(value * microMolar) for value in binding_data['value']]
         binding_data.insert(2, 'dG', dG_data)
 
     with open(output_txt_path, mode='w', encoding='utf-8') as f:

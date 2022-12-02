@@ -113,10 +113,10 @@ wic:
       wic:
         graphviz:
           label: Extract Docking\nPoses
-    (7, duplictae):
+    (7, duplicate):
       wic:
         graphviz:
-          label: Duplicate receptor PDBQT
+          label: Duplicate Receptor PDBQT
     (8, autodock_vina_filter):
       wic:
         graphviz:

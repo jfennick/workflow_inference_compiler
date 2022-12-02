@@ -34,36 +34,27 @@ steps:
     in:
       output_pdb_path: '&receptor_prod.pdbqt'
       arg1: -xr # Receptor needs to be rigid
-
-
-
-
-# - convert_mol2:
-#     in:
-#       input_path: '*pdbbind_sdfs'
-#     scatter: [input_path]
-# - convert_pdbqt:
-#     in:
-#       output_pdb_path: '&mol_prod.pdbqt'
-#     scatter: [input_path]
-
-# # remove waters, then assigns partial charges to the protein
-# - pdb4amber_run:
-#     in:
-#       input_pdb_path: '*pdbbind_pdbs'
-#       output_pdb_path: '&pdbbind_pdb4amber.pdb'
-#       config:
-#         remove_waters: True
-#         remove_hydrogen: True
-#     scatter: [input_pdb_path]
-
-# - convert_mol2:
-#     in:
-#       input_path: '*pdbbind_pdb4amber.pdb'
-#     scatter: [input_path]
-
-# - convert_pdbqt:
-#     in:
-#       output_pdb_path: '&receptor_prod.pdbqt'
-#       arg1: -xr # Receptor needs to be rigid
-#     scatter: [input_path]
+wic:
+  graphviz:
+    label: Assign Partial\nCharges
+  steps:
+    (1, convert_mol2):
+      wic:
+        graphviz:
+          label: Assign Partial Charges
+    (2, convert_pdbqt):
+      wic:
+        graphviz:
+          label: Convert to\npdbqt format
+    (3, pdb4amber_run):
+      wic:
+        graphviz:
+          label: Fix Residue Names\n(pdb4amber)
+    (4, convert_mol2):
+      wic:
+        graphviz:
+          label: Assign Partial Charges
+    (5, convert_pdbqt):
+      wic:
+        graphviz:
+          label: Convert to\npdbqt format

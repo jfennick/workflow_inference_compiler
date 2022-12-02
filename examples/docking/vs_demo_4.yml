@@ -92,7 +92,6 @@ wic:
   steps:
     (1, download_pdbbind_refined):
       wic:
-        inlineable: False
         graphviz:
           label: Download the PDBbind refined dataset
     (2, convert_pdbqt.yml):
@@ -101,10 +100,10 @@ wic:
     (3, autodock_vina_rescore.yml):
       wic:
         inlineable: False
-    (4, duplictae):
+    (4, duplicate):
       wic:
         graphviz:
-          label: Duplicate receptor PDB
+          label: Duplicate Receptor PDB
     (5, autodock_vina_filter):
       wic:
         graphviz:

@@ -91,10 +91,10 @@ wic:
     (4, ligand_modeling_docking.yml):
       wic:
         inlineable: False # Due to yml wic tag inlineing issue and ~sdf_path
-    (5, duplictae):
+    (5, duplicate):
       wic:
         graphviz:
-          label: Duplicate receptor PDBQT
+          label: Duplicate Receptor PDBQT
     (6, autodock_vina_filter):
       wic:
         graphviz:
