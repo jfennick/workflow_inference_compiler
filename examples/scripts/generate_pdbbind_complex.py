@@ -84,8 +84,10 @@ def read_index_file(index_file_path: str) -> pd.DataFrame:
 
             # Kd conversion to micro molar
             unit = re.split(r"=[-+]?(?:\d*\.\d+|\d+)", words[4])[1]
+            standard_type = re.split(r"=[-+]?(?:\d*\.\d+|\d+)", words[4])[0]
             kd = float(re.findall(r"[-+]?(?:\d*\.\d+|\d+)",words[4])[0])
-            data['Kd'].append(kd * unit_conv[unit])
+            data['Kd_Ki'].append(standard_type)
+            data['value'].append(kd * unit_conv[unit])
             data['ligand_name'].append(re.findall(r'\((.*?)\)', words[7])[0])
 
     return pd.DataFrame.from_dict(data)
@@ -119,14 +121,13 @@ def load_data(index_file_name: str, base_dir: str, query:str, output_txt_path:st
         df = df[(int(min_row) - 1):int(max_row)]
 
     # Calculate dG
-    binding_data = df[['PDB_code', 'Kd']]
-    microMolar = 0.000001  # uM
-
     convert_Kd_dG = distutils.util.strtobool(convert_Kd_dG)
+    binding_data = df[['PDB_code', 'value', 'Kd_Ki']]
     if convert_Kd_dG:
-        dG_data = binding_data.apply(lambda row: calculate_dG(row.Kd * microMolar),
-                           axis = 1)
-        binding_data.insert(len(binding_data.columns), 'dG', dG_data)
+        microMolar = 0.000001  # uM
+        dG_data = binding_data.apply(lambda row: calculate_dG(row.value * microMolar),
+                                    axis = 1)
+        binding_data.insert(2, 'dG', dG_data)
 
     with open(output_txt_path, mode='w', encoding='utf-8') as f:
         dfAsString = binding_data.to_string(header=False, index=False)

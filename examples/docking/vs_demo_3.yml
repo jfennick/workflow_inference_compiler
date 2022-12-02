@@ -76,25 +76,33 @@ wic:
   graphviz:
     label: Virtual Screening Demo
   steps:
-    (1, setup_pdb.yml):
+    (1, download_pdb.yml):
+      wic:
+        inlineable: False
+
+    (2, setup_pdb.yml):
       wic:
         inlineable: False # Due to yml wic tag inlineing issue and ~pdb_id
         graphviz:
           label: Setup PDB
-    (2, download_smiles_ligand_db.yml):
+    (3, download_smiles_ligand_db.yml):
       wic:
         inlineable: False
-    (3, ligand_modeling_docking.yml):
+    (4, ligand_modeling_docking.yml):
       wic:
         inlineable: False # Due to yml wic tag inlineing issue and ~sdf_path
-    (4, autodock_vina_filter):
+    (5, duplictae):
+      wic:
+        graphviz:
+          label: Duplicate receptor PDBQT
+    (6, autodock_vina_filter):
       wic:
         graphviz:
           label: Apply Docking\nScore Cutoff
-    (5, gen_topol_params.yml):
+    (7, gen_topol_params.yml):
       wic:
         inlineable: False
-    (6, stability.yml):
+    (8, stability.yml):
       wic:
         inlineable: False # Due to yml wic tag inlineing issue and ~ inputs
         steps:
@@ -128,10 +136,10 @@ wic:
                 (2, analysis_final.yml):
                   wic:
                     backend: complex
-    (7, autodock_vina_rescore.yml):
+    (9, autodock_vina_rescore.yml):
       wic:
         inlineable: False
-    (8, scatter_plot):
+    (10, scatter_plot):
       wic:
         graphviz:
           label: Plot Experimental\nvs Predicted Binding
