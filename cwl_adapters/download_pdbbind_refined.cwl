@@ -45,9 +45,9 @@ inputs:
     default: /refined-set
 
   query:
-    label: query str to search the dataset, Pandas query doesn't support slash(/) in column names please use Ki_Kd instead of Kd/Ki
+    label: query str to search the dataset, Pandas query doesn't support slash(/) in column names please use Kd_Ki instead of Kd/Ki
     doc: |-
-      query str to search the dataset. Pandas query doesn't support slash(/)  in column names please use Ki_Kd instead of Kd/Ki
+      query str to search the dataset. Pandas query doesn't support slash(/) in column names please use Kd_Ki instead of Kd/Ki
       Type: string
       File type: input
       Accepted formats: txt

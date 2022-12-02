@@ -1,5 +1,4 @@
-# pylint: disable=import-outside-toplevel,no-member
-# type: ignore
+# pylint: disable=no-member
 import os.path as osp
 import re
 import subprocess
